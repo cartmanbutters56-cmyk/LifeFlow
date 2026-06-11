@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { initSession, checkMidnightPassed, getTodayKey, toLocalDateKey, buildWeekDates } from '../data/sessionService';
 import { buildDailySummaries, getStats, getStreak } from '../data/statsService';
-import { doc, getDoc, onSnapshot, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, onSnapshot, updateDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { signOut } from '../firebase/auth';
 
@@ -33,6 +33,7 @@ export function useAppStore(userId, displayName) {
   function save(key, value) {
     try { localStorage.setItem(prefix + key, JSON.stringify(value)); } catch {}
   }
+
   const [themeMode, setThemeMode] = useState(() => load('themeMode', 'light'));
   const [profileName, setProfileName] = useState(() => load('profileName', displayName || ''));
   const [effectiveTheme, setEffectiveTheme] = useState(() => {
@@ -65,6 +66,12 @@ export function useAppStore(userId, displayName) {
 
   const todayDayName = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
 
+  // ─── Guard: prevents write-back loop when Firestore pushes remote updates ───
+  // When onSnapshot fires, we set this to true before applying state updates.
+  // All push useEffects check this flag and skip writing if it's a remote update.
+  const isRemoteUpdate = useRef(false);
+  const [appDataLoaded, setAppDataLoaded] = useState(false);
+
   useEffect(() => { save('themeMode', themeMode); }, [themeMode]);
   useEffect(() => { save('profileName', profileName); }, [profileName]);
 
@@ -80,91 +87,110 @@ export function useAppStore(userId, displayName) {
   }, [displayName, profileName]);
   useEffect(() => { save('wu', waterUnit); }, [waterUnit]);
 
-  // ─── Firestore: displayName sync + single session ─────
+  // ─── Firestore: session management + real-time app data sync ─────────────
   const sessionId = useRef(null);
   const currentProfileNameRef = useRef(profileName);
   useEffect(() => { currentProfileNameRef.current = profileName; }, [profileName]);
 
   useEffect(() => {
     if (!userId) return;
+
     const sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
     sessionId.current = sid;
     const ref = doc(db, 'users', userId);
 
+    // Register session
     setDoc(ref, {
       displayName: profileName || displayName || '',
       currentSession: sid,
       lastSeen: serverTimestamp(),
     }, { merge: true }).catch(() => {});
 
+    // ─── Single onSnapshot listener handles EVERYTHING in real-time ──────
+    // This replaces both the old session onSnapshot and the one-time getDoc.
+    // Now all devices (laptop, phone) receive live updates whenever any
+    // device writes to Firestore.
     const unsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) return;
       const data = snap.data();
-      if (data.displayName && data.displayName !== currentProfileNameRef.current) {
-        setProfileName(data.displayName);
-      }
+
+      // ── Session: kick out duplicate logins ──────────────────────────────
       if (data.currentSession && data.currentSession !== sessionId.current) {
         signOut().catch(() => {});
+        return;
       }
-    });
-    return () => unsub();
-  }, [userId]);
 
-  useEffect(() => {
-    if (!userId || !sessionId.current) return;
-    const ref = doc(db, 'users', userId);
-    updateDoc(ref, { displayName: profileName }).catch(() => {});
-  }, [profileName, userId]);
+      // ── displayName sync ────────────────────────────────────────────────
+      if (data.displayName && data.displayName !== currentProfileNameRef.current) {
+        isRemoteUpdate.current = true;
+        setProfileName(data.displayName);
+        setTimeout(() => { isRemoteUpdate.current = false; }, 0);
+      }
 
-  // ─── Firestore: load app data on mount (one-time) ────
-  const [appDataLoaded, setAppDataLoaded] = useState(false);
-  useEffect(() => {
-    if (!userId || appDataLoaded) return;
-    const ref = doc(db, 'users', userId);
-    getDoc(ref, { source: 'server' }).catch(() => getDoc(ref)).then(snap => {
-      if (!snap.exists()) return;
-      const data = snap.data();
+      // ── App settings sync ───────────────────────────────────────────────
       const s = data.appSettings;
       if (s) {
+        isRemoteUpdate.current = true;
         if (s.themeMode !== undefined) setThemeMode(s.themeMode);
         if (s.waterUnit !== undefined) setWaterUnitState(s.waterUnit);
         if (s.waterGoal !== undefined) setWaterGoalState(s.waterGoal);
         if (s.calorieGoal !== undefined) setCalorieGoalState(s.calorieGoal);
         if (s.routines !== undefined) setRoutines(s.routines);
         if (s.challenges !== undefined) setChallenges(s.challenges);
+        setTimeout(() => { isRemoteUpdate.current = false; }, 0);
       }
+
+      // ── Daily data sync (water, meals, routines, history) ───────────────
       const dd = data.dailyData;
       if (dd) {
         const dateKeys = Object.keys(dd).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k));
         let wi = {}, m = {}, ch = {}, wh = {}, rc = {};
         dateKeys.forEach(dk => {
           const day = dd[dk];
-          if (day && day.waterIntake !== undefined) wi[dk] = day.waterIntake;
-          if (day && day.meals !== undefined) m[dk] = day.meals;
-          if (day && day.completionHistory !== undefined) ch[dk] = day.completionHistory;
-          if (day && day.waterHistory !== undefined) wh[dk] = day.waterHistory;
-          if (day && day.routineCompletions) Object.assign(rc, day.routineCompletions);
+          if (day?.waterIntake !== undefined) wi[dk] = day.waterIntake;
+          if (day?.meals !== undefined) m[dk] = day.meals;
+          if (day?.completionHistory !== undefined) ch[dk] = day.completionHistory;
+          if (day?.waterHistory !== undefined) wh[dk] = day.waterHistory;
+          if (day?.routineCompletions) Object.assign(rc, day.routineCompletions);
         });
+
+        isRemoteUpdate.current = true;
         if (Object.keys(wi).length) setWaterIntake(prev => ({ ...prev, ...wi }));
         if (Object.keys(m).length) setMeals(prev => ({ ...prev, ...m }));
         if (Object.keys(ch).length) setCompletionHistory(prev => ({ ...prev, ...ch }));
         if (Object.keys(wh).length) setWaterHistory(prev => ({ ...prev, ...wh }));
         if (Object.keys(rc).length) setRoutineCompletions(prev => ({ ...prev, ...rc }));
+        // Use setTimeout so the flag clears after React batches all state updates
+        setTimeout(() => { isRemoteUpdate.current = false; }, 0);
       }
-      setAppDataLoaded(true);
-    }).catch(() => {});
-  }, [userId, appDataLoaded]);
 
-  // ─── Firestore: push settings on change ──────────────
+      if (!appDataLoaded) setAppDataLoaded(true);
+    });
+
+    return () => unsub();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
+
+  // ─── Firestore: push displayName changes back ─────────────────────────────
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !sessionId.current || isRemoteUpdate.current) return;
     const ref = doc(db, 'users', userId);
-    updateDoc(ref, { appSettings: { themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges } }).catch(() => {});
-  }, [userId, themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges]);
+    updateDoc(ref, { displayName: profileName }).catch(() => {});
+  }, [profileName, userId]);
 
-  // ─── Firestore: push daily data on change ────────────
+  // ─── Firestore: push settings on change ──────────────────────────────────
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !appDataLoaded || isRemoteUpdate.current) return;
+    const ref = doc(db, 'users', userId);
+    updateDoc(ref, {
+      appSettings: { themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges },
+    }).catch(() => {});
+  }, [userId, appDataLoaded, themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges]);
+
+  // ─── Firestore: push daily data on change ────────────────────────────────
+  useEffect(() => {
+    if (!userId || !appDataLoaded || isRemoteUpdate.current) return;
+
     const allKeys = [...new Set([
       ...Object.keys(waterIntake),
       ...Object.keys(meals),
@@ -173,6 +199,7 @@ export function useAppStore(userId, displayName) {
       ...Object.keys(routineCompletions).map(k => k.split('_').pop()),
     ])];
     if (!allKeys.length) return;
+
     const daily = {};
     allKeys.forEach(dk => {
       const entry = {};
@@ -186,20 +213,20 @@ export function useAppStore(userId, displayName) {
       if (Object.keys(rcs).length) entry.routineCompletions = rcs;
       daily[dk] = entry;
     });
+
     const ref = doc(db, 'users', userId);
     updateDoc(ref, { dailyData: daily }).catch(() => {});
-  }, [userId, waterIntake, meals, completionHistory, routineCompletions, waterHistory]);
+  }, [userId, appDataLoaded, waterIntake, meals, completionHistory, routineCompletions, waterHistory]);
 
-  // Apply effective theme to body
+  // ─── Apply effective theme to body ───────────────────────────────────────
   useEffect(() => {
     document.body.setAttribute('data-theme', effectiveTheme);
   }, [effectiveTheme]);
 
-
-  // Update effective theme when mode changes
   useEffect(() => {
     setEffectiveTheme(themeMode);
   }, [themeMode]);
+
   // One-time clear of stored routines for fresh start (global flag, never re-runs)
   useEffect(() => {
     if (localStorage.getItem('wv3_routines_cleared_global')) return;
@@ -209,6 +236,7 @@ export function useAppStore(userId, displayName) {
     setRoutines([]);
     setRoutineCompletions({});
   }, []);
+
   useEffect(() => { save('routines', routines); }, [routines]);
   useEffect(() => { save('rc', routineCompletions); }, [routineCompletions]);
   useEffect(() => { save('meals', meals); }, [meals]);
@@ -220,7 +248,7 @@ export function useAppStore(userId, displayName) {
   useEffect(() => { save('challenges', challenges); }, [challenges]);
   useEffect(() => { save('ds', dailySummaries); }, [dailySummaries]);
 
-  // ─── Midnight Detection ──────────────────────────────────
+  // ─── Midnight Detection ──────────────────────────────────────────────────
   const midnightInterval = useRef(null);
   useEffect(() => {
     const check = () => {
@@ -248,7 +276,7 @@ export function useAppStore(userId, displayName) {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
-  // ─── Build Daily Summaries ───────────────────────────────
+  // ─── Build Daily Summaries ───────────────────────────────────────────────
   useEffect(() => {
     const data = { waterIntake, waterGoal, meals, routineCompletions, routines, dailySummaries };
     const updated = buildDailySummaries(data);
@@ -257,7 +285,7 @@ export function useAppStore(userId, displayName) {
     }
   }, [waterIntake, waterGoal, meals, routineCompletions, routines]);
 
-  // ─── Legacy completion/water history sync ────────────────
+  // ─── Legacy completion/water history sync ────────────────────────────────
   useEffect(() => {
     const todayMeals = meals[todayKey] || [];
     const doneM = todayMeals.filter(m => m.done).length;
@@ -274,14 +302,14 @@ export function useAppStore(userId, displayName) {
     setWaterHistory(prev => ({ ...prev, [todayKey]: { intake: curWater, goal: waterGoal } }));
   }, [routineCompletions, meals, waterIntake, waterGoal, routines, todayDayName]);
 
-  // ─── Theme ───────────────────────────────────────────────
+  // ─── Theme ───────────────────────────────────────────────────────────────
   const setTheme = useCallback((mode) => setThemeMode(mode), []);
   const cycleTheme = useCallback(() => {
     setThemeMode(m => m === 'light' ? 'dark' : 'light');
   }, []);
   const setWaterUnit = useCallback(u => setWaterUnitState(u), []);
 
-  // ─── Routines ────────────────────────────────────────────
+  // ─── Routines ────────────────────────────────────────────────────────────
   const toggleRoutine = useCallback((id, dk) => {
     const k = `${id}_${dk}`;
     setRoutineCompletions(prev => ({ ...prev, [k]: !prev[k] }));
@@ -294,7 +322,7 @@ export function useAppStore(userId, displayName) {
   const todayRoutines = routines.filter(r => r.days.includes(todayDayName));
   const todayRoutinesDone = todayRoutines.filter(r => isRoutineDone(r.id, todayKey)).length;
 
-  // ─── Meals ───────────────────────────────────────────────
+  // ─── Meals ───────────────────────────────────────────────────────────────
   const getTodayMeals = useCallback(() => meals[todayKey] || [], [meals, todayKey]);
   const toggleMeal = useCallback(mid => setMeals(prev => {
     const list = prev[todayKey] || [];
@@ -314,7 +342,7 @@ export function useAppStore(userId, displayName) {
   }), [todayKey]);
   const setCalorieGoal = useCallback(g => setCalorieGoalState(g), []);
 
-  // ─── Water ───────────────────────────────────────────────
+  // ─── Water ───────────────────────────────────────────────────────────────
   const todayWater = waterIntake[todayKey] || 0;
   const addWater = useCallback(oz => setWaterIntake(prev => {
     const cur = prev[todayKey] || 0;
@@ -323,9 +351,7 @@ export function useAppStore(userId, displayName) {
   const resetWater = useCallback(() => setWaterIntake(prev => ({ ...prev, [todayKey]: 0 })), []);
   const setWaterGoal = useCallback(g => setWaterGoalState(g), []);
 
-
-
-  // ─── Challenges ─────────────────────────────────────────
+  // ─── Challenges ──────────────────────────────────────────────────────────
   const startChallenge = useCallback((id) => {
     setChallenges(prev => prev.map(c =>
       c.id === id ? { ...c, status: 'active', startDate: todayKey, checkIns: {} } : c
@@ -382,7 +408,7 @@ export function useAppStore(userId, displayName) {
   const completedChallenges = challenges.filter(c => c.status === 'completed');
   const availableChallenges = challenges.filter(c => c.status === 'available');
 
-  // ─── Stats ───────────────────────────────────────────────
+  // ─── Stats ───────────────────────────────────────────────────────────────
   const getDataForStats = useCallback(() => {
     return { waterIntake, waterGoal, meals, routineCompletions, routines, dailySummaries };
   }, [waterIntake, waterGoal, meals, routineCompletions, routines, dailySummaries]);
@@ -413,8 +439,7 @@ export function useAppStore(userId, displayName) {
     return getStats('yearly', getDataForStats());
   }, [getDataForStats]);
 
-  // ─── Derived State ──────────────────────────────────────
-  // ─── Reset all user data to defaults ──────────────────────
+  // ─── Reset all user data to defaults ─────────────────────────────────────
   const resetAllData = useCallback(() => {
     const keys = Object.keys(localStorage).filter(k => k.startsWith(prefix));
     keys.forEach(k => localStorage.removeItem(k));
@@ -431,6 +456,7 @@ export function useAppStore(userId, displayName) {
     setCalorieGoalState(2000);
   }, [prefix]);
 
+  // ─── Derived State ────────────────────────────────────────────────────────
   const todayMeals = getTodayMeals();
   const todayMealsDone = todayMeals.filter(m => m.done).length;
 
