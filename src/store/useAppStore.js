@@ -66,11 +66,9 @@ export function useAppStore(userId, displayName) {
 
   const todayDayName = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
 
-  // ─── Guard: prevents write-back loop when Firestore pushes remote updates ───
-  // When onSnapshot fires, we set this to true before applying state updates.
-  // All push useEffects check this flag and skip writing if it's a remote update.
-  const isRemoteUpdate = useRef(false);
-  const [appDataLoaded, setAppDataLoaded] = useState(false);
+  // ─── Flag: true while applying incoming Firestore data ──────────────────────
+  // Prevents echo-writing remote changes back to Firestore
+  const isSyncing = useRef(false);
 
   useEffect(() => { save('themeMode', themeMode); }, [themeMode]);
   useEffect(() => { save('profileName', profileName); }, [profileName]);
@@ -87,7 +85,7 @@ export function useAppStore(userId, displayName) {
   }, [displayName, profileName]);
   useEffect(() => { save('wu', waterUnit); }, [waterUnit]);
 
-  // ─── Firestore: session management + real-time app data sync ─────────────
+  // ─── Firestore: real-time listener (replaces one-time getDoc) ───────────────
   const sessionId = useRef(null);
   const currentProfileNameRef = useRef(profileName);
   useEffect(() => { currentProfileNameRef.current = profileName; }, [profileName]);
@@ -99,97 +97,92 @@ export function useAppStore(userId, displayName) {
     sessionId.current = sid;
     const ref = doc(db, 'users', userId);
 
-    // Register session
+    // Register this session
     setDoc(ref, {
       displayName: profileName || displayName || '',
       currentSession: sid,
       lastSeen: serverTimestamp(),
     }, { merge: true }).catch(() => {});
 
-    // ─── Single onSnapshot listener handles EVERYTHING in real-time ──────
-    // This replaces both the old session onSnapshot and the one-time getDoc.
-    // Now all devices (laptop, phone) receive live updates whenever any
-    // device writes to Firestore.
+    // Single real-time listener handles BOTH session management AND data sync
     const unsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) return;
       const data = snap.data();
 
-      // ── Session: kick out duplicate logins ──────────────────────────────
+      // ── Session: kick duplicate logins ──────────────────────────────────────
       if (data.currentSession && data.currentSession !== sessionId.current) {
         signOut().catch(() => {});
         return;
       }
 
-      // ── displayName sync ────────────────────────────────────────────────
+      // ── Profile name ────────────────────────────────────────────────────────
       if (data.displayName && data.displayName !== currentProfileNameRef.current) {
-        isRemoteUpdate.current = true;
+        isSyncing.current = true;
         setProfileName(data.displayName);
-        setTimeout(() => { isRemoteUpdate.current = false; }, 0);
+        // Let React flush before clearing the flag
+        setTimeout(() => { isSyncing.current = false; }, 0);
       }
 
-      // ── App settings sync ───────────────────────────────────────────────
+      // ── App settings ────────────────────────────────────────────────────────
       const s = data.appSettings;
       if (s) {
-        isRemoteUpdate.current = true;
+        isSyncing.current = true;
         if (s.themeMode !== undefined) setThemeMode(s.themeMode);
         if (s.waterUnit !== undefined) setWaterUnitState(s.waterUnit);
         if (s.waterGoal !== undefined) setWaterGoalState(s.waterGoal);
         if (s.calorieGoal !== undefined) setCalorieGoalState(s.calorieGoal);
         if (s.routines !== undefined) setRoutines(s.routines);
         if (s.challenges !== undefined) setChallenges(s.challenges);
-        setTimeout(() => { isRemoteUpdate.current = false; }, 0);
+        setTimeout(() => { isSyncing.current = false; }, 0);
       }
 
-      // ── Daily data sync (water, meals, routines, history) ───────────────
+      // ── Daily data ──────────────────────────────────────────────────────────
       const dd = data.dailyData;
       if (dd) {
         const dateKeys = Object.keys(dd).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k));
-        let wi = {}, m = {}, ch = {}, wh = {}, rc = {};
-        dateKeys.forEach(dk => {
-          const day = dd[dk];
-          if (day?.waterIntake !== undefined) wi[dk] = day.waterIntake;
-          if (day?.meals !== undefined) m[dk] = day.meals;
-          if (day?.completionHistory !== undefined) ch[dk] = day.completionHistory;
-          if (day?.waterHistory !== undefined) wh[dk] = day.waterHistory;
-          if (day?.routineCompletions) Object.assign(rc, day.routineCompletions);
-        });
+        if (dateKeys.length) {
+          isSyncing.current = true;
 
-        isRemoteUpdate.current = true;
-        if (Object.keys(wi).length) setWaterIntake(prev => ({ ...prev, ...wi }));
-        if (Object.keys(m).length) setMeals(prev => ({ ...prev, ...m }));
-        if (Object.keys(ch).length) setCompletionHistory(prev => ({ ...prev, ...ch }));
-        if (Object.keys(wh).length) setWaterHistory(prev => ({ ...prev, ...wh }));
-        if (Object.keys(rc).length) setRoutineCompletions(prev => ({ ...prev, ...rc }));
-        // Use setTimeout so the flag clears after React batches all state updates
-        setTimeout(() => { isRemoteUpdate.current = false; }, 0);
+          let wi = {}, m = {}, ch = {}, wh = {}, rc = {};
+          dateKeys.forEach(dk => {
+            const day = dd[dk];
+            if (day?.waterIntake !== undefined) wi[dk] = day.waterIntake;
+            if (day?.meals !== undefined) m[dk] = day.meals;
+            if (day?.completionHistory !== undefined) ch[dk] = day.completionHistory;
+            if (day?.waterHistory !== undefined) wh[dk] = day.waterHistory;
+            if (day?.routineCompletions) Object.assign(rc, day.routineCompletions);
+          });
+
+          // Merge incoming data over local state (remote wins for cross-device sync)
+          if (Object.keys(wi).length) setWaterIntake(prev => ({ ...prev, ...wi }));
+          if (Object.keys(m).length) setMeals(prev => ({ ...prev, ...m }));
+          if (Object.keys(ch).length) setCompletionHistory(prev => ({ ...prev, ...ch }));
+          if (Object.keys(wh).length) setWaterHistory(prev => ({ ...prev, ...wh }));
+          if (Object.keys(rc).length) setRoutineCompletions(prev => ({ ...prev, ...rc }));
+
+          setTimeout(() => { isSyncing.current = false; }, 0);
+        }
       }
-
-      if (!appDataLoaded) setAppDataLoaded(true);
+    }, (err) => {
+      console.warn('Firestore listener error:', err);
     });
 
     return () => unsub();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  // ─── Firestore: push displayName changes back ─────────────────────────────
+  // ─── Firestore: push settings when they change (skip if syncing) ─────────
   useEffect(() => {
-    if (!userId || !sessionId.current || isRemoteUpdate.current) return;
+    if (!userId || isSyncing.current) return;
     const ref = doc(db, 'users', userId);
-    updateDoc(ref, { displayName: profileName }).catch(() => {});
-  }, [profileName, userId]);
+    setDoc(ref, {
+      appSettings: { themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges }
+    }, { merge: true }).catch(() => {});
+  }, [userId, themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges]);
 
-  // ─── Firestore: push settings on change ──────────────────────────────────
+  // ─── Firestore: push daily data when it changes (skip if syncing) ────────
   useEffect(() => {
-    if (!userId || !appDataLoaded || isRemoteUpdate.current) return;
-    const ref = doc(db, 'users', userId);
-    updateDoc(ref, {
-      appSettings: { themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges },
-    }).catch(() => {});
-  }, [userId, appDataLoaded, themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges]);
-
-  // ─── Firestore: push daily data on change ────────────────────────────────
-  useEffect(() => {
-    if (!userId || !appDataLoaded || isRemoteUpdate.current) return;
+    if (!userId || isSyncing.current) return;
 
     const allKeys = [...new Set([
       ...Object.keys(waterIntake),
@@ -215,14 +208,16 @@ export function useAppStore(userId, displayName) {
     });
 
     const ref = doc(db, 'users', userId);
-    updateDoc(ref, { dailyData: daily }).catch(() => {});
-  }, [userId, appDataLoaded, waterIntake, meals, completionHistory, routineCompletions, waterHistory]);
+    // Use merge:true so partial updates from other devices aren't wiped
+    setDoc(ref, { dailyData: daily }, { merge: true }).catch(() => {});
+  }, [userId, waterIntake, meals, completionHistory, routineCompletions, waterHistory]);
 
-  // ─── Apply effective theme to body ───────────────────────────────────────
+  // Apply effective theme to body
   useEffect(() => {
     document.body.setAttribute('data-theme', effectiveTheme);
   }, [effectiveTheme]);
 
+  // Update effective theme when mode changes
   useEffect(() => {
     setEffectiveTheme(themeMode);
   }, [themeMode]);
@@ -248,7 +243,7 @@ export function useAppStore(userId, displayName) {
   useEffect(() => { save('challenges', challenges); }, [challenges]);
   useEffect(() => { save('ds', dailySummaries); }, [dailySummaries]);
 
-  // ─── Midnight Detection ──────────────────────────────────────────────────
+  // ─── Midnight Detection ──────────────────────────────────────────────────────
   const midnightInterval = useRef(null);
   useEffect(() => {
     const check = () => {
@@ -276,7 +271,7 @@ export function useAppStore(userId, displayName) {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, []);
 
-  // ─── Build Daily Summaries ───────────────────────────────────────────────
+  // ─── Build Daily Summaries ──────────────────────────────────────────────────
   useEffect(() => {
     const data = { waterIntake, waterGoal, meals, routineCompletions, routines, dailySummaries };
     const updated = buildDailySummaries(data);
@@ -285,7 +280,7 @@ export function useAppStore(userId, displayName) {
     }
   }, [waterIntake, waterGoal, meals, routineCompletions, routines]);
 
-  // ─── Legacy completion/water history sync ────────────────────────────────
+  // ─── Legacy completion/water history sync ───────────────────────────────────
   useEffect(() => {
     const todayMeals = meals[todayKey] || [];
     const doneM = todayMeals.filter(m => m.done).length;
@@ -302,14 +297,14 @@ export function useAppStore(userId, displayName) {
     setWaterHistory(prev => ({ ...prev, [todayKey]: { intake: curWater, goal: waterGoal } }));
   }, [routineCompletions, meals, waterIntake, waterGoal, routines, todayDayName]);
 
-  // ─── Theme ───────────────────────────────────────────────────────────────
+  // ─── Theme ───────────────────────────────────────────────────────────────────
   const setTheme = useCallback((mode) => setThemeMode(mode), []);
   const cycleTheme = useCallback(() => {
     setThemeMode(m => m === 'light' ? 'dark' : 'light');
   }, []);
   const setWaterUnit = useCallback(u => setWaterUnitState(u), []);
 
-  // ─── Routines ────────────────────────────────────────────────────────────
+  // ─── Routines ────────────────────────────────────────────────────────────────
   const toggleRoutine = useCallback((id, dk) => {
     const k = `${id}_${dk}`;
     setRoutineCompletions(prev => ({ ...prev, [k]: !prev[k] }));
@@ -322,7 +317,7 @@ export function useAppStore(userId, displayName) {
   const todayRoutines = routines.filter(r => r.days.includes(todayDayName));
   const todayRoutinesDone = todayRoutines.filter(r => isRoutineDone(r.id, todayKey)).length;
 
-  // ─── Meals ───────────────────────────────────────────────────────────────
+  // ─── Meals ───────────────────────────────────────────────────────────────────
   const getTodayMeals = useCallback(() => meals[todayKey] || [], [meals, todayKey]);
   const toggleMeal = useCallback(mid => setMeals(prev => {
     const list = prev[todayKey] || [];
@@ -342,7 +337,7 @@ export function useAppStore(userId, displayName) {
   }), [todayKey]);
   const setCalorieGoal = useCallback(g => setCalorieGoalState(g), []);
 
-  // ─── Water ───────────────────────────────────────────────────────────────
+  // ─── Water ───────────────────────────────────────────────────────────────────
   const todayWater = waterIntake[todayKey] || 0;
   const addWater = useCallback(oz => setWaterIntake(prev => {
     const cur = prev[todayKey] || 0;
@@ -351,7 +346,7 @@ export function useAppStore(userId, displayName) {
   const resetWater = useCallback(() => setWaterIntake(prev => ({ ...prev, [todayKey]: 0 })), []);
   const setWaterGoal = useCallback(g => setWaterGoalState(g), []);
 
-  // ─── Challenges ──────────────────────────────────────────────────────────
+  // ─── Challenges ──────────────────────────────────────────────────────────────
   const startChallenge = useCallback((id) => {
     setChallenges(prev => prev.map(c =>
       c.id === id ? { ...c, status: 'active', startDate: todayKey, checkIns: {} } : c
@@ -408,7 +403,7 @@ export function useAppStore(userId, displayName) {
   const completedChallenges = challenges.filter(c => c.status === 'completed');
   const availableChallenges = challenges.filter(c => c.status === 'available');
 
-  // ─── Stats ───────────────────────────────────────────────────────────────
+  // ─── Stats ───────────────────────────────────────────────────────────────────
   const getDataForStats = useCallback(() => {
     return { waterIntake, waterGoal, meals, routineCompletions, routines, dailySummaries };
   }, [waterIntake, waterGoal, meals, routineCompletions, routines, dailySummaries]);
@@ -439,7 +434,7 @@ export function useAppStore(userId, displayName) {
     return getStats('yearly', getDataForStats());
   }, [getDataForStats]);
 
-  // ─── Reset all user data to defaults ─────────────────────────────────────
+  // ─── Reset all user data to defaults ─────────────────────────────────────────
   const resetAllData = useCallback(() => {
     const keys = Object.keys(localStorage).filter(k => k.startsWith(prefix));
     keys.forEach(k => localStorage.removeItem(k));
@@ -456,7 +451,6 @@ export function useAppStore(userId, displayName) {
     setCalorieGoalState(2000);
   }, [prefix]);
 
-  // ─── Derived State ────────────────────────────────────────────────────────
   const todayMeals = getTodayMeals();
   const todayMealsDone = todayMeals.filter(m => m.done).length;
 
