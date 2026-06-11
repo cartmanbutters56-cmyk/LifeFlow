@@ -1,0 +1,382 @@
+/* ═══════════════════════════════════════════════════════════════════
+   🎨 LifeFlow Design System - Color Tokens v3.0
+   Unified design tokens — Light & Dark Mode
+   ═══════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ─── Core Brand Colors ─────────────────────────────────────────── */
+  --brand-primary: #2EB872;        /* Green */
+  --brand-primary-light: #34D399;  /* Light green */
+  --brand-primary-dark: #27A364;   /* Dark green */
+  --brand-secondary: #059669;      /* Emerald */
+  --brand-tertiary: #10B981;       /* Green */
+
+  /* ─── Health Metric Colors ──────────────────────────────────────── */
+  --metric-water: #0891B2;
+  --metric-calories: #DC2626;
+  --metric-exercise: #7C3AED;
+  --metric-nutrition: #059669;
+  --metric-sleep: #1E40AF;
+  --metric-mindfulness: #BE185D;
+
+  /* ─── Status Colors ─────────────────────────────────────────────── */
+  --status-success: #10B981;
+  --status-warning: #F59E0B;
+  --status-error: #EF4444;
+  --status-info: #3B82F6;
+
+  /* ─── Neutral Scale (Slate) ─────────────────────────────────────── */
+  --neutral-50: #F8FAFC;
+  --neutral-100: #F1F5F9;
+  --neutral-200: #E2E8F0;
+  --neutral-300: #CBD5E1;
+  --neutral-400: #94A3B8;
+  --neutral-500: #64748B;
+  --neutral-600: #475569;
+  --neutral-700: #334155;
+  --neutral-800: #1E293B;
+  --neutral-900: #0F172A;
+
+  /* ─── Unified Category Palette ──────────────────────────────────── */
+  --cat-rose: #F43F5E;
+  --cat-violet: #8B5CF6;
+  --cat-cyan: #06B6D4;
+  --cat-amber: #F59E0B;
+  --cat-emerald: #10B981;
+  --cat-pink: #EC4899;
+  --cat-red: #EF4444;
+  --cat-slate: #94A3B8;
+  --cat-blue: #5B7FFF;
+  --cat-coral: #E8997D;
+
+  /* ─── Category Gradients (same for both themes) ────────────────── */
+  --grad-rose: linear-gradient(135deg, #F43F5E, #FB7185);
+  --grad-violet: linear-gradient(135deg, #8B5CF6, #A78BFA);
+  --grad-cyan: linear-gradient(135deg, #06B6D4, #22D3EE);
+  --grad-amber: linear-gradient(135deg, #F59E0B, #FBBF24);
+  --grad-emerald: linear-gradient(135deg, #10B981, #34D399);
+  --grad-pink: linear-gradient(135deg, #EC4899, #F472B6);
+  --grad-red: linear-gradient(135deg, #EF4444, #FB7185);
+  --grad-blue: linear-gradient(135deg, #5B7FFF, #818CF8);
+  --grad-coral: linear-gradient(135deg, #E8997D, #F0A991);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   🌅 Light Theme
+   ═══════════════════════════════════════════════════════════════════ */
+
+body[data-theme="light"] {
+  /* ─── Backgrounds ───────────────────────────────────────────────── */
+  --bg-primary: #FAFAFC;
+  --bg-secondary: #F1F5F9;
+  --bg-tertiary: #E8ECF4;
+
+  /* ─── Surfaces ──────────────────────────────────────────────────── */
+  --surface-primary: #FFFFFF;
+  --surface-secondary: #F8FAFC;
+  --surface-tertiary: #F1F5F9;
+  --surface-raised: #FFFFFF;
+  --surface-overlay: rgba(255, 255, 255, 0.95);
+
+  /* ─── Text Hierarchy ────────────────────────────────────────────── */
+  --text-primary: #0F172A;
+  --text-secondary: #334155;
+  --text-tertiary: #64748B;
+  --text-muted: #94A3B8;
+  --text-inverse: #FFFFFF;
+  --text-on-brand: #FFFFFF;
+
+  /* ─── Interactive Elements ──────────────────────────────────────── */
+  --interactive-primary: var(--brand-primary);
+  --interactive-primary-hover: var(--brand-primary-dark);
+  --interactive-secondary: var(--neutral-100);
+  --interactive-secondary-hover: var(--neutral-200);
+  --interactive-tertiary: rgba(99, 102, 241, 0.08);
+
+  /* ─── Borders & Dividers ────────────────────────────────────────── */
+  --border-subtle: #E2E8F0;
+  --border-default: #CBD5E1;
+  --border-strong: #94A3B8;
+  --border-brand: rgba(99, 102, 241, 0.2);
+  --divider: #F1F5F9;
+
+  /* ─── Shadow System ─────────────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.12), 0 8px 20px rgba(0, 0, 0, 0.06);
+
+  /* ─── Focus & Accessibility ─────────────────────────────────────── */
+  --focus-ring: 0 0 0 3px rgba(99, 102, 241, 0.3);
+
+  /* ─── Overlay ───────────────────────────────────────────────────── */
+  --overlay: rgba(0, 0, 0, 0.4);
+  --overlay-blur: blur(12px);
+
+  /* ─── Glass Effects ─────────────────────────────────────────────── */
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --glass-shadow: 0 8px 32px rgba(99, 102, 241, 0.08);
+
+  /* ─── Component-Specific ────────────────────────────────────────── */
+  --card-bg: var(--surface-primary);
+  --card-border: var(--border-subtle);
+  --card-shadow: var(--shadow-sm);
+  --card-hover-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+
+  --input-bg: #FFFFFF;
+  --input-border: var(--border-default);
+  --input-border-focus: var(--brand-primary);
+  --input-placeholder: var(--text-muted);
+
+  --nav-bg: rgba(255, 255, 255, 0.9);
+  --nav-border: rgba(99, 102, 241, 0.15);
+  --nav-shadow: 0 8px 24px rgba(99, 102, 241, 0.08);
+
+  --scrollbar-thumb: var(--border-default);
+  --scrollbar-track: transparent;
+
+  /* ─── Category Soft Backgrounds (12% opacity) ──────────────────── */
+  --cat-rose-soft: rgba(244, 63, 94, 0.12);
+  --cat-violet-soft: rgba(139, 92, 246, 0.12);
+  --cat-cyan-soft: rgba(6, 182, 212, 0.12);
+  --cat-amber-soft: rgba(245, 158, 11, 0.12);
+  --cat-emerald-soft: rgba(16, 185, 129, 0.12);
+  --cat-pink-soft: rgba(236, 72, 153, 0.12);
+  --cat-red-soft: rgba(239, 68, 68, 0.12);
+  --cat-slate-soft: rgba(148, 163, 184, 0.12);
+  --cat-blue-soft: rgba(91, 127, 255, 0.12);
+  --cat-coral-soft: rgba(232, 153, 125, 0.12);
+
+  /* ─── Health Metric Alpha Variants ──────────────────────────────── */
+  --metric-water-soft: rgba(8, 145, 178, 0.1);
+  --metric-calories-soft: rgba(220, 38, 38, 0.1);
+  --metric-exercise-soft: rgba(124, 58, 237, 0.1);
+  --metric-nutrition-soft: rgba(5, 150, 105, 0.1);
+  --metric-sleep-soft: rgba(30, 64, 175, 0.1);
+  --metric-mindfulness-soft: rgba(190, 24, 93, 0.1);
+
+  /* ─── Legacy Compatibility (Mirrors for migration) ──────────────── */
+  --accent: var(--brand-primary);
+  --accent2: var(--brand-primary-light);
+  --accent-soft: rgba(46, 184, 114, 0.1);
+  --text: var(--text-primary);
+  --text2: var(--text-secondary);
+  --text3: var(--text-tertiary);
+  --surface: var(--surface-primary);
+  --surface2: var(--surface-secondary);
+  --border: var(--border-subtle);
+  --border2: var(--border-default);
+  --bg: var(--bg-primary);
+  --bg2: var(--bg-secondary);
+  --pill-bg: var(--interactive-secondary);
+  --green: var(--metric-nutrition);
+  --green-soft: var(--metric-nutrition-soft);
+  --water: var(--metric-water);
+  --water-soft: var(--metric-water-soft);
+  --coral: var(--metric-calories);
+  --coral-soft: var(--metric-calories-soft);
+  --amber: var(--status-warning);
+  --amber-soft: rgba(245, 158, 11, 0.1);
+  --purple: var(--metric-exercise);
+  --purple-soft: var(--metric-exercise-soft);
+  --pink: var(--metric-mindfulness);
+  --pink-soft: var(--metric-mindfulness-soft);
+  --mint: var(--status-success);
+  --mint-soft: rgba(16, 185, 129, 0.1);
+  --card: var(--surface-primary);
+  --glass: var(--glass-bg);
+  --glass-inner: var(--surface-overlay);
+  --border-glass: var(--glass-border);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   🌙 Dark Theme
+   ═══════════════════════════════════════════════════════════════════ */
+
+body[data-theme="dark"] {
+  /* ─── Backgrounds ───────────────────────────────────────────────── */
+  --bg-primary: #0F172A;
+  --bg-secondary: #1E293B;
+  --bg-tertiary: #131C31;
+
+  /* ─── Surfaces ──────────────────────────────────────────────────── */
+  --surface-primary: #1E293B;
+  --surface-secondary: #334155;
+  --surface-tertiary: #2A3A4F;
+  --surface-raised: #334155;
+  --surface-overlay: rgba(30, 41, 59, 0.95);
+
+  /* ─── Text Hierarchy ────────────────────────────────────────────── */
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-tertiary: #94A3B8;
+  --text-muted: #64748B;
+  --text-inverse: #0F172A;
+  --text-on-brand: #FFFFFF;
+
+  /* ─── Interactive Elements ──────────────────────────────────────── */
+  --interactive-primary: #34D399;
+  --interactive-primary-hover: #6EE7B7;
+  --interactive-secondary: #334155;
+  --interactive-secondary-hover: #475569;
+  --interactive-tertiary: rgba(52, 211, 153, 0.12);
+
+  /* ─── Borders & Dividers ────────────────────────────────────────── */
+  --border-subtle: #334155;
+  --border-default: #475569;
+  --border-strong: #64748B;
+  --border-brand: rgba(129, 140, 248, 0.2);
+  --divider: #334155;
+
+  /* ─── Shadow System ─────────────────────────────────────────────── */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.35), 0 2px 4px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.4), 0 4px 10px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.5), 0 8px 20px rgba(0, 0, 0, 0.35);
+
+  /* ─── Focus & Accessibility ─────────────────────────────────────── */
+  --focus-ring: 0 0 0 3px rgba(129, 140, 248, 0.4);
+
+  /* ─── Overlay ───────────────────────────────────────────────────── */
+  --overlay: rgba(0, 0, 0, 0.6);
+  --overlay-blur: blur(16px);
+
+  /* ─── Glass Effects ─────────────────────────────────────────────── */
+  --glass-bg: rgba(30, 41, 59, 0.8);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+
+  /* ─── Component-Specific ────────────────────────────────────────── */
+  --card-bg: var(--surface-primary);
+  --card-border: var(--border-subtle);
+  --card-shadow: var(--shadow-sm);
+  --card-hover-shadow: 0 4px 12px rgba(129, 140, 248, 0.2);
+
+  --input-bg: var(--surface-primary);
+  --input-border: var(--border-default);
+  --input-border-focus: #818CF8;
+  --input-placeholder: var(--text-muted);
+
+  --nav-bg: rgba(30, 41, 59, 0.9);
+  --nav-border: rgba(129, 140, 248, 0.15);
+  --nav-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+
+  --scrollbar-thumb: var(--border-default);
+  --scrollbar-track: transparent;
+
+  /* ─── Category Soft Backgrounds (18% opacity for dark) ─────────── */
+  --cat-rose-soft: rgba(244, 63, 94, 0.18);
+  --cat-violet-soft: rgba(139, 92, 246, 0.18);
+  --cat-cyan-soft: rgba(6, 182, 212, 0.18);
+  --cat-amber-soft: rgba(245, 158, 11, 0.18);
+  --cat-emerald-soft: rgba(16, 185, 129, 0.18);
+  --cat-pink-soft: rgba(236, 72, 153, 0.18);
+  --cat-red-soft: rgba(239, 68, 68, 0.18);
+  --cat-slate-soft: rgba(148, 163, 184, 0.18);
+  --cat-blue-soft: rgba(91, 127, 255, 0.18);
+  --cat-coral-soft: rgba(232, 153, 125, 0.18);
+
+  /* ─── Health Metric Alpha Variants ──────────────────────────────── */
+  --metric-water-soft: rgba(34, 211, 238, 0.15);
+  --metric-calories-soft: rgba(251, 113, 133, 0.15);
+  --metric-exercise-soft: rgba(167, 139, 250, 0.15);
+  --metric-nutrition-soft: rgba(52, 211, 153, 0.15);
+  --metric-sleep-soft: rgba(96, 165, 250, 0.15);
+  --metric-mindfulness-soft: rgba(244, 114, 182, 0.15);
+
+  /* ─── Legacy Compatibility ──────────────────────────────────────── */
+  --accent: #34D399;
+  --accent2: #6EE7B7;
+  --accent-soft: rgba(52, 211, 153, 0.15);
+  --text: var(--text-primary);
+  --text2: var(--text-secondary);
+  --text3: var(--text-tertiary);
+  --surface: var(--surface-primary);
+  --surface2: var(--surface-secondary);
+  --border: var(--border-subtle);
+  --border2: var(--border-default);
+  --bg: var(--bg-primary);
+  --bg2: var(--bg-secondary);
+  --pill-bg: var(--interactive-secondary);
+  --green: #34D399;
+  --green-soft: var(--metric-nutrition-soft);
+  --water: #22D3EE;
+  --water-soft: var(--metric-water-soft);
+  --coral: #FB7185;
+  --coral-soft: var(--metric-calories-soft);
+  --amber: #FBBF24;
+  --amber-soft: rgba(251, 191, 36, 0.12);
+  --purple: var(--interactive-primary);
+  --purple-soft: var(--metric-exercise-soft);
+  --pink: #F472B6;
+  --pink-soft: var(--metric-mindfulness-soft);
+  --mint: #2DD4BF;
+  --mint-soft: rgba(45, 212, 191, 0.12);
+  --card: var(--surface-primary);
+  --glass: var(--glass-bg);
+  --glass-inner: var(--surface-overlay);
+  --border-glass: var(--glass-border);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   🎯 Utility Classes
+   ═══════════════════════════════════════════════════════════════════ */
+
+.health-metric-water {
+  --metric-color: var(--metric-water);
+  --metric-bg: var(--metric-water-soft);
+  --metric-shadow: 0 4px 16px var(--metric-water-soft);
+}
+
+.health-metric-calories {
+  --metric-color: var(--metric-calories);
+  --metric-bg: var(--metric-calories-soft);
+  --metric-shadow: 0 4px 16px var(--metric-calories-soft);
+}
+
+.health-metric-exercise {
+  --metric-color: var(--metric-exercise);
+  --metric-bg: var(--metric-exercise-soft);
+  --metric-shadow: 0 4px 16px var(--metric-exercise-soft);
+}
+
+.health-metric-nutrition {
+  --metric-color: var(--metric-nutrition);
+  --metric-bg: var(--metric-nutrition-soft);
+  --metric-shadow: 0 4px 16px var(--metric-nutrition-soft);
+}
+
+.glass-card-primary {
+  --card-bg: var(--glass-bg);
+  --card-border: var(--glass-border);
+  --card-shadow: var(--glass-shadow);
+}
+
+.glass-card-elevated {
+  --card-bg: var(--surface-raised);
+  --card-shadow: var(--card-hover-shadow);
+}
+
+.bottom-nav {
+  --nav-item-active: var(--interactive-primary);
+  --nav-item-inactive: var(--text-tertiary);
+  --nav-fab-bg: linear-gradient(135deg, var(--brand-primary), var(--brand-secondary));
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   📐 Category Utility Classes (for Gym, Routines, Challenges)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.cat-rose   { --cat: var(--cat-rose);   --cat-soft: var(--cat-rose-soft);   --cat-grad: var(--grad-rose); }
+.cat-violet { --cat: var(--cat-violet); --cat-soft: var(--cat-violet-soft); --cat-grad: var(--grad-violet); }
+.cat-cyan   { --cat: var(--cat-cyan);   --cat-soft: var(--cat-cyan-soft);   --cat-grad: var(--grad-cyan); }
+.cat-amber  { --cat: var(--cat-amber);  --cat-soft: var(--cat-amber-soft);  --cat-grad: var(--grad-amber); }
+.cat-emerald{ --cat: var(--cat-emerald);--cat-soft: var(--cat-emerald-soft);--cat-grad: var(--grad-emerald); }
+.cat-pink   { --cat: var(--cat-pink);   --cat-soft: var(--cat-pink-soft);   --cat-grad: var(--grad-pink); }
+.cat-red    { --cat: var(--cat-red);    --cat-soft: var(--cat-red-soft);    --cat-grad: var(--grad-red); }
+.cat-blue   { --cat: var(--cat-blue);   --cat-soft: var(--cat-blue-soft);   --cat-grad: var(--grad-blue); }
+.cat-coral  { --cat: var(--cat-coral);  --cat-soft: var(--cat-coral-soft);  --cat-grad: var(--grad-coral); }
+.cat-slate  { --cat: var(--cat-slate);  --cat-soft: var(--cat-slate-soft);  --cat-grad: var(--grad-slate, none); }
