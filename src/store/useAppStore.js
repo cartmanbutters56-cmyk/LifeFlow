@@ -327,7 +327,7 @@ export function useAppStore(userId, displayName) {
   const updateRoutine = useCallback((id, upd) => setRoutines(prev => prev.map(r => r.id === id ? { ...r, ...upd } : r)), []);
   const deleteRoutine = useCallback(id => setRoutines(prev => prev.filter(r => r.id !== id)), []);
 
-  const todayRoutines = routines.filter(r => r.days.includes(todayDayName));
+  const todayRoutines = routines.filter(r => r.days?.includes(todayDayName));
   const todayRoutinesDone = todayRoutines.filter(r => isRoutineDone(r.id, todayKey)).length;
 
   // ─── Meals ───────────────────────────────────────────────────────────────────

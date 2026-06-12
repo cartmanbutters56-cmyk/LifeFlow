@@ -446,7 +446,8 @@ function ScheduleCard({ event, onEdit, onDelete, onToggleReminder }) {
 // ─── Main Component ─────────────────────────────────────────────────────────────
 
 export default function RoutinePlanner({ store, setActiveTab }) {
-  const { routines: events = [], addRoutine, updateRoutine, deleteRoutine, todayKey } = store;
+  const { routines: all = [], addRoutine, updateRoutine, deleteRoutine, todayKey } = store;
+  const events = all.filter(r => r.dateKey);
 
   // Treat "routines" as events with category-based fields
   const addEvent = (data) => addRoutine({ ...data });
@@ -582,10 +583,6 @@ export default function RoutinePlanner({ store, setActiveTab }) {
           fontFamily: "'Outfit', sans-serif",
         }}>My Calendar</span>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"
-            strokeLinecap="round" width="18" height="18">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
           <div style={{
             width: 28, height: 28, borderRadius: '50%',
             background: 'var(--accent)', display: 'flex', alignItems: 'center',
@@ -647,7 +644,8 @@ export default function RoutinePlanner({ store, setActiveTab }) {
             const isToday = cellDateKey === todayDateKey;
             const isSelected = cellDateKey === selectedDateKey;
             const cellEvents = cellDateKey ? (eventsByDate[cellDateKey] || []) : [];
-            const dotColors = [...new Set(cellEvents.map(e => CAT_META[e.category]?.dot))].slice(0, 3);
+            const catColor = cellEvents.length > 0 ? CAT_META[cellEvents[0].category]?.color : null;
+            const catBg = cellEvents.length > 0 ? CAT_META[cellEvents[0].category]?.bg : null;
 
             return (
               <div
@@ -666,31 +664,24 @@ export default function RoutinePlanner({ store, setActiveTab }) {
                   margin: '0 auto',
                   background: isSelected
                     ? 'var(--accent)'
-                    : isToday
-                      ? 'transparent'
+                    : cellEvents.length > 0 && !isToday
+                      ? catBg
                       : 'transparent',
-                  border: isToday && !isSelected ? '2px solid var(--accent)' : 'none',
-                  fontSize: 13, fontWeight: isToday || isSelected ? 800 : 500,
+                  border: isToday && !isSelected
+                    ? `2px solid ${cellEvents.length > 0 ? catColor : 'var(--accent)'}`
+                    : cellEvents.length > 0 && !isSelected
+                      ? `2px solid ${catColor}44`
+                      : 'none',
+                  fontSize: 13, fontWeight: isToday || isSelected ? 800 : 600,
                   color: isSelected
                     ? '#fff'
                     : !cell.cur
                       ? 'var(--border)'
-                      : 'var(--text)',
+                      : cellEvents.length > 0 && !isToday
+                        ? catColor
+                        : 'var(--text)',
                   transition: 'all 0.15s',
                 }}>{cell.day}</div>
-
-                {/* Event dots */}
-                {dotColors.length > 0 && (
-                  <div style={{
-                    display: 'flex', justifyContent: 'center', gap: 2, marginTop: 2,
-                  }}>
-                    {dotColors.map((c, i) => (
-                      <div key={i} style={{
-                        width: 5, height: 5, borderRadius: '50%', background: c,
-                      }} />
-                    ))}
-                  </div>
-                )}
               </div>
             );
           })}
