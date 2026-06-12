@@ -154,93 +154,97 @@ export function useAppStore(userId, displayName) {
         setProfileName(data.displayName);
       }
 
-      // ── App settings ────────────────────────────────────────────────────────
-      const s = data.appSettings;
-      if (s) {
-        if (s.themeMode !== undefined) setThemeMode(s.themeMode);
-        if (s.waterUnit !== undefined) setWaterUnitState(s.waterUnit);
-        if (s.waterGoal !== undefined) setWaterGoalState(s.waterGoal);
-        if (s.calorieGoal !== undefined) setCalorieGoalState(s.calorieGoal);
-        if (s.challenges !== undefined) setChallenges(s.challenges);
-        // For routines and gymWeekPlan, merge on first sync so local changes
-        // made before the snapshot arrived are preserved alongside Firestore data
-        if (s.routines !== undefined) {
-          if (!isFirstSync) {
-            setRoutines(s.routines);
-          } else {
-            setRoutines(prev => {
-              if (prev.length === 0) return s.routines;
-              const localIds = new Set(prev.map(r => r.id));
-              const remoteOnly = s.routines.filter(r => !localIds.has(r.id));
-              return [...prev, ...remoteOnly];
-            });
-          }
-        }
-        if (s.gymWeekPlan !== undefined) {
-          if (!isFirstSync) {
-            setGymWeekPlanState(s.gymWeekPlan);
-          } else {
-            setGymWeekPlanState(prev => {
-              if (!prev) return s.gymWeekPlan;
-              const merged = { ...s.gymWeekPlan };
-              Object.entries(prev).forEach(([day, plan]) => {
-                if (plan.category || plan.exercises.length) merged[day] = plan;
-              });
-              return merged;
-            });
-          }
-        }
-      }
+      // ── Settings (top-level fields with legacy appSettings fallback) ──────
+      const read = (field, fallback) => data[field] !== undefined ? data[field] : fallback;
 
-      // ── Daily data ──────────────────────────────────────────────────────────
-      const dd = data.dailyData;
-      if (dd) {
-        const dateKeys = Object.keys(dd).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k));
-        if (dateKeys.length) {
-          let wi = {}, m = {}, ch = {}, wh = {}, rc = {};
-          dateKeys.forEach(dk => {
-            const day = dd[dk];
-            if (day?.waterIntake !== undefined) wi[dk] = day.waterIntake;
-            if (day?.meals !== undefined) m[dk] = day.meals;
-            if (day?.completionHistory !== undefined) ch[dk] = day.completionHistory;
-            if (day?.waterHistory !== undefined) wh[dk] = day.waterHistory;
-            if (day?.routineCompletions) Object.assign(rc, day.routineCompletions);
+      if (read('themeMode', data.appSettings?.themeMode) !== undefined) setThemeMode(read('themeMode', data.appSettings?.themeMode));
+      if (read('waterUnit', data.appSettings?.waterUnit) !== undefined) setWaterUnitState(read('waterUnit', data.appSettings?.waterUnit));
+      if (read('waterGoal', data.appSettings?.waterGoal) !== undefined) setWaterGoalState(read('waterGoal', data.appSettings?.waterGoal));
+      if (read('calorieGoal', data.appSettings?.calorieGoal) !== undefined) setCalorieGoalState(read('calorieGoal', data.appSettings?.calorieGoal));
+      if (read('challenges', data.appSettings?.challenges) !== undefined) setChallenges(read('challenges', data.appSettings?.challenges));
+
+      const remoteRoutines = read('routines', data.appSettings?.routines);
+      if (remoteRoutines !== undefined) {
+        if (!isFirstSync) {
+          setRoutines(remoteRoutines);
+        } else {
+          setRoutines(prev => {
+            if (prev.length === 0) return remoteRoutines;
+            const localIds = new Set(prev.map(r => r.id));
+            const remoteOnly = remoteRoutines.filter(r => !localIds.has(r.id));
+            return [...prev, ...remoteOnly];
           });
-
-          // Merge incoming data over local state
-          if (Object.keys(wi).length) {
-            if (!isFirstSync) {
-              setWaterIntake(prev => ({ ...prev, ...wi }));
-            } else {
-              // Keep the larger intake per date so local additions aren't lost
-              setWaterIntake(prev => {
-                const r = { ...prev };
-                Object.entries(wi).forEach(([k, v]) => { r[k] = Math.max(r[k] || 0, v); });
-                return r;
-              });
-            }
-          }
-          if (Object.keys(m).length) {
-            if (!isFirstSync) {
-              setMeals(prev => ({ ...prev, ...m }));
-            } else {
-              // Keep local meals that don't exist in the remote set
-              setMeals(prev => {
-                const r = { ...prev };
-                Object.entries(m).forEach(([dk, remoteList]) => {
-                  const localList = r[dk] || [];
-                  const remoteIds = new Set(remoteList.map(x => x.id));
-                  r[dk] = [...remoteList, ...localList.filter(x => !remoteIds.has(x.id))];
-                });
-                return r;
-              });
-            }
-          }
-          if (Object.keys(ch).length) setCompletionHistory(prev => ({ ...prev, ...ch }));
-          if (Object.keys(wh).length) setWaterHistory(prev => ({ ...prev, ...wh }));
-          if (Object.keys(rc).length) setRoutineCompletions(prev => ({ ...prev, ...rc }));
         }
       }
+
+      const remoteGymPlan = read('gymWeekPlan', data.appSettings?.gymWeekPlan);
+      if (remoteGymPlan !== undefined) {
+        if (!isFirstSync) {
+          setGymWeekPlanState(remoteGymPlan);
+        } else {
+          setGymWeekPlanState(prev => {
+            if (!prev) return remoteGymPlan;
+            const merged = { ...remoteGymPlan };
+            Object.entries(prev).forEach(([day, plan]) => {
+              if (plan.category || plan.exercises.length) merged[day] = plan;
+            });
+            return merged;
+          });
+        }
+      }
+
+      // ── Daily data (top-level fields with legacy dailyData fallback) ──────
+      const buildFromLegacy = () => {
+        const dd = data.dailyData;
+        if (!dd) return {};
+        const dateKeys = Object.keys(dd).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k));
+        const result = { waterIntake: {}, meals: {}, completionHistory: {}, waterHistory: {}, routineCompletions: {} };
+        dateKeys.forEach(dk => {
+          const day = dd[dk];
+          if (day?.waterIntake !== undefined) result.waterIntake[dk] = day.waterIntake;
+          if (day?.meals !== undefined) result.meals[dk] = day.meals;
+          if (day?.completionHistory !== undefined) result.completionHistory[dk] = day.completionHistory;
+          if (day?.waterHistory !== undefined) result.waterHistory[dk] = day.waterHistory;
+          if (day?.routineCompletions) Object.assign(result.routineCompletions, day.routineCompletions);
+        });
+        return result;
+      };
+      const legacy = buildFromLegacy();
+
+      const remoteWI = read('waterIntake', legacy.waterIntake);
+      if (Object.keys(remoteWI).length) {
+        if (!isFirstSync) {
+          setWaterIntake(prev => ({ ...prev, ...remoteWI }));
+        } else {
+          setWaterIntake(prev => {
+            const r = { ...prev };
+            Object.entries(remoteWI).forEach(([k, v]) => { r[k] = (r[k] || 0) + v; });
+            return r;
+          });
+        }
+      }
+      const remoteMeals = read('meals', legacy.meals);
+      if (Object.keys(remoteMeals).length) {
+        if (!isFirstSync) {
+          setMeals(prev => ({ ...prev, ...remoteMeals }));
+        } else {
+          setMeals(prev => {
+            const r = { ...prev };
+            Object.entries(remoteMeals).forEach(([dk, remoteList]) => {
+              const localList = r[dk] || [];
+              const remoteIds = new Set(remoteList.map(x => x.id));
+              r[dk] = [...remoteList, ...localList.filter(x => !remoteIds.has(x.id))];
+            });
+            return r;
+          });
+        }
+      }
+      const remoteCH = read('completionHistory', legacy.completionHistory);
+      if (Object.keys(remoteCH).length) setCompletionHistory(prev => ({ ...prev, ...remoteCH }));
+      const remoteWH = read('waterHistory', legacy.waterHistory);
+      if (Object.keys(remoteWH).length) setWaterHistory(prev => ({ ...prev, ...remoteWH }));
+      const remoteRC = read('routineCompletions', legacy.routineCompletions);
+      if (Object.keys(remoteRC).length) setRoutineCompletions(prev => ({ ...prev, ...remoteRC }));
 
       // Clear syncing flag after React flushes, then bump the generation
       // so any user changes made before initial sync get pushed to Firestore
@@ -256,45 +260,17 @@ export function useAppStore(userId, displayName) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  // ─── Firestore: push settings when they change (skip if syncing) ─────────
+  // ─── Firestore: push data as top-level fields (skip if syncing) ─────────
   useEffect(() => {
     if (!userId || isSyncing.current || !initialSyncDone.current) return;
     const ref = doc(db, 'users', userId);
     setDoc(ref, {
-      appSettings: { themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges, gymWeekPlan }
+      themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges, gymWeekPlan,
+      waterIntake, meals, completionHistory, waterHistory, routineCompletions,
     }, { merge: true }).catch(() => {});
-  }, [userId, themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges, gymWeekPlan, syncGeneration]);
-
-  // ─── Firestore: push daily data when it changes (skip if syncing) ────────
-  useEffect(() => {
-    if (!userId || isSyncing.current || !initialSyncDone.current) return;
-
-    const allKeys = [...new Set([
-      ...Object.keys(waterIntake),
-      ...Object.keys(meals),
-      ...Object.keys(completionHistory),
-      ...Object.keys(waterHistory),
-      ...Object.keys(routineCompletions).map(k => k.split('_').pop()),
-    ])];
-    if (!allKeys.length) return;
-
-    const daily = {};
-    allKeys.forEach(dk => {
-      const entry = {};
-      if (waterIntake[dk] !== undefined) entry.waterIntake = waterIntake[dk];
-      if (meals[dk] !== undefined) entry.meals = meals[dk];
-      if (completionHistory[dk] !== undefined) entry.completionHistory = completionHistory[dk];
-      if (waterHistory[dk] !== undefined) entry.waterHistory = waterHistory[dk];
-      const rcs = Object.keys(routineCompletions)
-        .filter(k => k.endsWith(`_${dk}`))
-        .reduce((a, k) => ({ ...a, [k]: routineCompletions[k] }), {});
-      if (Object.keys(rcs).length) entry.routineCompletions = rcs;
-      daily[dk] = entry;
-    });
-
-    const ref = doc(db, 'users', userId);
-    setDoc(ref, { dailyData: daily }, { merge: true }).catch(() => {});
-  }, [userId, waterIntake, meals, completionHistory, routineCompletions, waterHistory, syncGeneration]);
+  }, [userId, themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges,
+      gymWeekPlan, waterIntake, meals, completionHistory, waterHistory,
+      routineCompletions, syncGeneration]);
 
   // Apply effective theme to body
   useEffect(() => {
