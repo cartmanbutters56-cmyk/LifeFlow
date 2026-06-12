@@ -1,25 +1,82 @@
-import React, { useState, useEffect, useMemo } from 'react';
-
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Modal, inputStyle, Portal } from '../components/UI';
 
-const CATEGORIES = ['Exercise','Work','Study','Personal','Health'];
-const CAT_COLORS = { Exercise:'var(--cat-rose)', Work:'var(--cat-violet)', Study:'var(--cat-blue)', Personal:'var(--cat-amber)', Health:'var(--cat-coral)' };
-const CAT_ICONS = {
-  Exercise: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="15" height="15"><path d="M6.5 6.5l11 11M17.5 6.5L12 12l-5.5 5.5M7 17l-3 3M17 7l3-3"/></svg>,
-  Work: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="15" height="15"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>,
-  Study: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="15" height="15"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>,
-  Personal: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="15" height="15"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
-  Health: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="15" height="15"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>,
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const CATEGORIES = ['Meeting', 'Task', 'Birthday', 'Event', 'Reminder'];
+
+const CAT_META = {
+  Meeting: {
+    color: '#7EC8A4',          // green
+    dot: '#7EC8A4',
+    bg: '#E8F7F0',
+    icon: () => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="4"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </svg>
+    ),
+  },
+  Task: {
+    color: '#7B8FD4',          // purple/blue
+    dot: '#7B8FD4',
+    bg: '#EEF0FB',
+    icon: () => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
+        <path d="M9 11l3 3L22 4"/>
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      </svg>
+    ),
+  },
+  Birthday: {
+    color: '#E07B7B',          // coral/red
+    dot: '#E07B7B',
+    bg: '#FCF0F0',
+    icon: () => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
+        <path d="M20 12v10H4V12"/>
+        <path d="M2 7h20v5H2z"/>
+        <path d="M12 22V7"/>
+        <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+        <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+      </svg>
+    ),
+  },
+  Event: {
+    color: '#F5C842',          // yellow/gold
+    dot: '#F5C842',
+    bg: '#FDF8E3',
+    icon: () => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+    ),
+  },
+  Reminder: {
+    color: '#F49E4C',          // orange
+    dot: '#F49E4C',
+    bg: '#FEF3E8',
+    icon: () => (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+        strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+      </svg>
+    ),
+  },
 };
 
-const DAYS_MAP = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-const QUOTES = [
-  '"The secret of your success is found in your daily routine."',
-  '"Small daily improvements lead to stunning results."',
-  '"Discipline is choosing between what you want now and what you want most."',
-  '"You don\'t rise to the level of your goals. You fall to the level of your systems."',
-  '"Motivation gets you started. Habit keeps you going."',
-];
+const DAY_LABELS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+
+function toLocalDateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 function formatTime(time) {
   if (!time) return '';
@@ -33,202 +90,387 @@ function formatTime(time) {
 function computeEndTime(time, duration) {
   const [h, m] = time.split(':').map(Number);
   const totalMin = h * 60 + m + (duration || 60);
-  const endH = Math.floor(totalMin / 60);
+  const endH = Math.floor(totalMin / 60) % 24;
   const endM = totalMin % 60;
-  return `${String(endH).padStart(2,'0')}:${String(endM).padStart(2,'0')}`;
+  return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
 }
 
-function getTimeRemaining(time) {
-  const [h, m] = time.split(':').map(Number);
-  const now = new Date();
-  const target = new Date();
-  target.setHours(h, m, 0, 0);
-  const diff = target - now;
-  if (diff <= 0) return null;
-  const hours = Math.floor(diff / 3600000);
-  const minutes = Math.floor((diff % 3600000) / 60000);
-  if (hours > 0) return hours + 'h ' + minutes + 'm';
-  return minutes + 'm';
+// ─── Calendar Grid ─────────────────────────────────────────────────────────────
+
+function buildCalendarDays(year, month) {
+  const firstDay = new Date(year, month, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const prevDays = new Date(year, month, 0).getDate();
+  const cells = [];
+
+  for (let i = 0; i < firstDay; i++) {
+    cells.push({ day: prevDays - firstDay + 1 + i, cur: false });
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    cells.push({ day: d, cur: true });
+  }
+  const remaining = 42 - cells.length;
+  for (let i = 1; i <= remaining; i++) {
+    cells.push({ day: i, cur: false });
+  }
+  return cells;
 }
 
-function toLocalDateKey(d) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
+// ─── Event/Add Modal ───────────────────────────────────────────────────────────
 
-function get5DayDates() {
-  const today = new Date();
-  return [-2, -1, 0, 1, 2].map(offset => {
-    const d = new Date(today);
-    d.setDate(today.getDate() + offset);
-    return {
-      date: d,
-      dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
-      dayNum: d.getDate(),
-      month: d.toLocaleDateString('en-US', { month: 'short' }),
-      isToday: offset === 0,
-      isPast: offset < 0,
-      dateKey: toLocalDateKey(d),
-      dayOfWeek: DAYS_MAP[d.getDay()],
-    };
-  });
-}
-
-function getNextRoutine(routines, isRoutineDone, dateKey) {
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-  const upcoming = routines
-    .filter(r => !isRoutineDone(r.id, dateKey))
-    .sort((a, b) => a.time.localeCompare(b.time))
-    .find(r => {
-      const [h, m] = r.time.split(':').map(Number);
-      return (h * 60 + m) > currentMinutes;
-    });
-  return upcoming || null;
-}
-
-function RoutineModal({ open, onClose, onSave, initial }) {
+function EventModal({ open, onClose, onSave, initial, defaultCategory }) {
   const [title, setTitle] = useState(initial?.title || '');
-  const [category, setCategory] = useState(initial?.category || 'Exercise');
-  const [time, setTime] = useState(initial?.time || '08:00');
-  const [selectedDays, setSelectedDays] = useState(initial?.days || ['Mon','Tue','Wed','Thu','Fri']);
+  const [category, setCategory] = useState(initial?.category || defaultCategory || 'Meeting');
+  const [time, setTime] = useState(initial?.time || '10:00');
   const [duration, setDuration] = useState(initial?.duration || 60);
+  const [date, setDate] = useState(initial?.dateKey || toLocalDateKey(new Date()));
+  const [reminder, setReminder] = useState(initial?.reminder || false);
+  const [location, setLocation] = useState(initial?.location || '');
 
-  const toggleDay = (d) => setSelectedDays(prev =>
-    prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
+  useEffect(() => {
+    if (open) {
+      setTitle(initial?.title || '');
+      setCategory(initial?.category || defaultCategory || 'Meeting');
+      setTime(initial?.time || '10:00');
+      setDuration(initial?.duration || 60);
+      setDate(initial?.dateKey || toLocalDateKey(new Date()));
+      setReminder(initial?.reminder || false);
+      setLocation(initial?.location || '');
+    }
+  }, [open, initial, defaultCategory]);
 
   const submit = () => {
     if (!title.trim()) return;
-    onSave({
-      title: title.trim(), category, time, days: selectedDays,
-      duration: parseInt(duration) || 60,
-      color: CAT_COLORS[category],
-    });
-    if (!initial) { setTitle(''); setSelectedDays(['Mon','Tue','Wed','Thu','Fri']); setDuration(60); }
+    onSave({ title: title.trim(), category, time, duration: parseInt(duration) || 60, dateKey: date, reminder, location });
     onClose();
   };
 
+  const meta = CAT_META[category];
+
   return (
-    <Modal open={open} onClose={onClose} title={initial ? 'Edit Routine' : 'New Routine'}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <Modal open={open} onClose={onClose} title={initial ? 'Edit Event' : 'New Event'}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+        {/* Category selector */}
         <div>
-          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', display: 'block', marginBottom: 7 }}>NAME</label>
-          <input style={inputStyle} placeholder="e.g. Morning Workout" value={title} onChange={e => setTitle(e.target.value)} />
-        </div>
-        <div>
-          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', display: 'block', marginBottom: 9 }}>CATEGORY</label>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          <label style={labelStyle}>TYPE</label>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7 }}>
             {CATEGORIES.map(c => {
-              const color = CAT_COLORS[c];
+              const m = CAT_META[c];
               const active = category === c;
               return (
                 <button key={c} onClick={() => setCategory(c)} style={{
-                  padding: '7px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  border: `1.5px solid ${active ? color : 'var(--border)'}`,
-                  background: active ? color + '18' : 'var(--glass)',
-                  color: active ? color : 'var(--text-secondary)',
-                  display: 'flex', alignItems: 'center', gap: 6,
+                  padding: '6px 12px', borderRadius: 10, fontSize: 12, fontWeight: 600,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                  border: `1.5px solid ${active ? m.color : 'var(--border)'}`,
+                  background: active ? m.bg : 'transparent',
+                  color: active ? m.color : 'var(--text-muted)',
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  transition: 'all 0.15s',
                 }}>
-                  <span style={{ color: active ? color : 'var(--text-muted)' }}>{CAT_ICONS[c]?.()}</span>
+                  <span style={{ color: m.color, opacity: active ? 1 : 0.5 }}>{m.icon()}</span>
                   {c}
                 </button>
               );
             })}
           </div>
         </div>
+
+        {/* Title */}
+        <div>
+          <label style={labelStyle}>TITLE</label>
+          <input style={inputStyle} placeholder="e.g. Team Standup" value={title} onChange={e => setTitle(e.target.value)} />
+        </div>
+
+        {/* Date + Time */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', display: 'block', marginBottom: 7 }}>TIME</label>
-            <input type="time" style={{ ...inputStyle }} value={time} onChange={e => setTime(e.target.value)} />
+            <label style={labelStyle}>DATE</label>
+            <input type="date" style={{ ...inputStyle }} value={date} onChange={e => setDate(e.target.value)} />
           </div>
           <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', display: 'block', marginBottom: 7 }}>DURATION (min)</label>
+            <label style={labelStyle}>TIME</label>
+            <input type="time" style={{ ...inputStyle }} value={time} onChange={e => setTime(e.target.value)} />
+          </div>
+        </div>
+
+        {/* Duration + Location */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <div>
+            <label style={labelStyle}>DURATION (min)</label>
             <input type="number" min="5" step="5" style={inputStyle} value={duration} onChange={e => setDuration(e.target.value)} />
           </div>
-        </div>
-        <div>
-          <label style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', letterSpacing: '0.06em', display: 'block', marginBottom: 9 }}>REPEAT ON</label>
-          <div style={{ display: 'flex', gap: 6 }}>
-            {['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d => {
-              const active = selectedDays.includes(d);
-              return (
-                <button key={d} onClick={() => toggleDay(d)} style={{
-                  flex: 1, padding: '9px 0', borderRadius: 10, fontSize: 12, fontWeight: 700, cursor: 'pointer',
-                  border: `1.5px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                  background: active ? 'var(--accent-soft)' : 'transparent',
-                  color: active ? 'var(--accent)' : 'var(--text-muted)',
-                }}>{d[0]}</button>
-              );
-            })}
+          <div>
+            <label style={labelStyle}>LOCATION</label>
+            <input style={inputStyle} placeholder="Optional" value={location} onChange={e => setLocation(e.target.value)} />
           </div>
         </div>
+
+        {/* Reminder toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Set Reminder</span>
+          <button onClick={() => setReminder(r => !r)} style={{
+            width: 44, height: 24, borderRadius: 12,
+            background: reminder ? meta.color : 'var(--border)',
+            border: 'none', cursor: 'pointer', position: 'relative',
+            transition: 'background 0.2s',
+          }}>
+            <span style={{
+              position: 'absolute', top: 3, left: reminder ? 23 : 3,
+              width: 18, height: 18, borderRadius: '50%', background: '#fff',
+              transition: 'left 0.2s',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.2)',
+            }} />
+          </button>
+        </div>
+
         <button onClick={submit} style={{
           marginTop: 4, padding: '13px 22px', borderRadius: 14,
-          background: 'var(--accent)', border: 'none', color: '#fff',
+          background: meta.color, border: 'none', color: '#fff',
           fontSize: 15, fontWeight: 700, cursor: 'pointer',
           fontFamily: 'inherit',
-          boxShadow: '0 4px 16px var(--accent-soft)',
-        }}>{initial ? 'Save Changes' : 'Add Routine'}</button>
+          boxShadow: `0 4px 16px ${meta.color}44`,
+        }}>{initial ? 'Save Changes' : 'Add Event'}</button>
       </div>
     </Modal>
   );
 }
 
+const labelStyle = {
+  fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+  letterSpacing: '0.06em', display: 'block', marginBottom: 7,
+};
+
+// ─── Delete Confirm ─────────────────────────────────────────────────────────────
+
 function ConfirmDeleteModal({ open, onClose, onConfirm, title }) {
   if (!open) return null;
   return (
     <Portal>
-    <div onClick={onClose} style={{
-      position: 'absolute', inset: 0, zIndex: 1100,
-      background: 'var(--overlay)', backdropFilter: 'var(--overlay-blur)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-    }}>
-      <div onClick={e => e.stopPropagation()} style={{
-        width: 300, background: 'var(--card)', borderRadius: 24, padding: 28,
-        boxShadow: '0 24px 80px rgba(0,0,0,0.3)',
-        animation: 'popIn 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+      <div onClick={onClose} style={{
+        position: 'absolute', inset: 0, zIndex: 1100,
+        background: 'var(--overlay)', backdropFilter: 'var(--overlay-blur)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', fontFamily: "'Outfit', sans-serif", marginBottom: 8 }}>
-          Delete Routine
-        </div>
-        <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 20, lineHeight: 1.5 }}>
-          Are you sure you want to delete <strong style={{ color: 'var(--text)' }}>"{title}"</strong>?
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onClose} style={{
-            flex: 1, padding: '11px', borderRadius: 12,
-            border: '1.5px solid var(--border)', background: 'transparent',
-            color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-            fontFamily: 'inherit',
-          }}>Cancel</button>
-          <button onClick={onConfirm} style={{
-            flex: 1, padding: '11px', borderRadius: 12,
-            border: 'none', background: 'var(--coral)', color: '#fff',
-            fontSize: 14, fontWeight: 600, cursor: 'pointer',
-            fontFamily: 'inherit',           boxShadow: '0 4px 12px var(--coral-soft)',
-          }}>Delete</button>
+        <div onClick={e => e.stopPropagation()} style={{
+          width: 300, background: 'var(--card)', borderRadius: 24, padding: 28,
+          boxShadow: '0 24px 80px rgba(0,0,0,0.3)',
+          animation: 'popIn 0.25s cubic-bezier(0.34,1.56,0.64,1)',
+        }}>
+          <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', fontFamily: "'Outfit', sans-serif", marginBottom: 8 }}>Delete Event</div>
+          <div style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 20, lineHeight: 1.5 }}>
+            Delete <strong style={{ color: 'var(--text)' }}>"{title}"</strong>?
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button onClick={onClose} style={{
+              flex: 1, padding: '11px', borderRadius: 12,
+              border: '1.5px solid var(--border)', background: 'transparent',
+              color: 'var(--text)', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+            }}>Cancel</button>
+            <button onClick={onConfirm} style={{
+              flex: 1, padding: '11px', borderRadius: 12,
+              border: 'none', background: 'var(--coral)', color: '#fff',
+              fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+              boxShadow: '0 4px 12px var(--coral-soft)',
+            }}>Delete</button>
+          </div>
         </div>
       </div>
-    </div>
     </Portal>
   );
 }
 
-export default function RoutinePlanner({ store, setActiveTab }) {
-  const {
-    routines, toggleRoutine, isRoutineDone,
-    addRoutine, updateRoutine, deleteRoutine, todayKey,
-  } = store;
+// ─── Schedule Card ──────────────────────────────────────────────────────────────
 
-  const [mounted, setMounted] = useState(false);
+function ScheduleCard({ event, onEdit, onDelete, onToggleReminder }) {
+  const meta = CAT_META[event.category] || CAT_META.Meeting;
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  return (
+    <div style={{
+      background: 'var(--card)',
+      borderRadius: 16,
+      border: '1px solid var(--border-glass)',
+      padding: '12px 14px',
+      boxShadow: 'var(--shadow-card)',
+      position: 'relative',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+        {/* Col 1 – day-of-week dot */}
+        <div style={{
+          width: 36, height: 36, borderRadius: 12,
+          background: meta.bg,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0, color: meta.color,
+        }}>
+          {meta.icon()}
+        </div>
+
+        {/* Col 2 – text */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontSize: 13, fontWeight: 800, color: 'var(--text)',
+            fontFamily: "'Outfit', sans-serif", marginBottom: 3,
+          }}>{event.title}</div>
+          <div style={{
+            fontSize: 11, color: 'var(--text-muted)', fontWeight: 500,
+            display: 'flex', alignItems: 'center', gap: 4,
+          }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="10" height="10">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+            {event.time ? formatTime(event.time) : '—'}
+          </div>
+
+          {/* Reminder row */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            marginTop: 10,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              {/* Avatars placeholder */}
+              <div style={{ display: 'flex' }}>
+                {[meta.color, meta.bg].map((c, i) => (
+                  <div key={i} style={{
+                    width: 22, height: 22, borderRadius: '50%',
+                    background: c, border: '2px solid var(--card)',
+                    marginLeft: i > 0 ? -6 : 0,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 9, fontWeight: 700, color: meta.color,
+                  }} />
+                ))}
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%',
+                  background: 'var(--border)',
+                  border: '2px solid var(--card)',
+                  marginLeft: -6,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 9, fontWeight: 700, color: 'var(--text-muted)',
+                }}>+</div>
+              </div>
+              <span style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 600 }}>Set Reminder</span>
+              {/* Toggle */}
+              <button onClick={() => onToggleReminder(event.id)} style={{
+                width: 32, height: 17, borderRadius: 9,
+                background: event.reminder ? meta.color : 'var(--border)',
+                border: 'none', cursor: 'pointer', position: 'relative',
+                transition: 'background 0.2s', flexShrink: 0,
+              }}>
+                <span style={{
+                  position: 'absolute', top: 2, left: event.reminder ? 16 : 2,
+                  width: 13, height: 13, borderRadius: '50%', background: '#fff',
+                  transition: 'left 0.2s',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                }} />
+              </button>
+            </div>
+          </div>
+
+          {/* Share / Reschedule */}
+          <div style={{
+            display: 'flex', gap: 12, marginTop: 8,
+            fontSize: 10, color: 'var(--text-muted)', fontWeight: 600,
+          }}>
+            <button onClick={() => onEdit(event)} style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--text-muted)', fontSize: 10, fontWeight: 600,
+              fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3,
+              padding: 0,
+            }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="10" height="10">
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
+                <polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+              </svg>
+              Share
+            </button>
+            <button onClick={() => onEdit(event)} style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--text-muted)', fontSize: 10, fontWeight: 600,
+              fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: 3,
+              padding: 0,
+            }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="10" height="10">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              Reschedule
+            </button>
+            {event.location && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="10" height="10">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+                {event.location}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* ⋯ menu */}
+        <div style={{ position: 'relative' }}>
+          <button onClick={() => setMenuOpen(o => !o)} style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            color: 'var(--text-muted)', padding: 4, lineHeight: 1,
+            fontSize: 16, fontWeight: 700,
+          }}>⋯</button>
+          {menuOpen && (
+            <div onClick={() => setMenuOpen(false)} style={{
+              position: 'absolute', right: 0, top: 28, zIndex: 50,
+              background: 'var(--card)', borderRadius: 12,
+              border: '1px solid var(--border)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+              minWidth: 110, overflow: 'hidden',
+            }}>
+              {[
+                { label: 'Edit', action: () => onEdit(event) },
+                { label: 'Delete', action: () => onDelete(event), danger: true },
+              ].map(item => (
+                <button key={item.label} onClick={item.action} style={{
+                  display: 'block', width: '100%', textAlign: 'left',
+                  padding: '10px 14px', border: 'none', background: 'transparent',
+                  cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                  color: item.danger ? 'var(--coral)' : 'var(--text)',
+                  fontFamily: 'inherit',
+                }}>{item.label}</button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ─────────────────────────────────────────────────────────────
+
+export default function RoutinePlanner({ store, setActiveTab }) {
+  const { routines: events = [], addRoutine, updateRoutine, deleteRoutine, todayKey } = store;
+
+  // Treat "routines" as events with category-based fields
+  const addEvent = (data) => addRoutine({ ...data });
+  const updateEvent = (id, data) => updateRoutine(id, data);
+  const deleteEvent = (id) => deleteRoutine(id);
+  const toggleReminder = (id) => {
+    const ev = events.find(e => e.id === id);
+    if (ev) updateRoutine(id, { reminder: !ev.reminder });
+  };
+
+  const today = new Date();
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [selectedDateKey, setSelectedDateKey] = useState(toLocalDateKey(today));
   const [showAdd, setShowAdd] = useState(false);
-  const [editingRoutine, setEditingRoutine] = useState(null);
+  const [addCategory, setAddCategory] = useState('Meeting');
+  const [editingEvent, setEditingEvent] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const [selectedDateIdx, setSelectedDateIdx] = useState(2);
-  const [completingId, setCompletingId] = useState(null);
+  const [createExpanded, setCreateExpanded] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => { const t = setTimeout(() => setMounted(true), 80); return () => clearTimeout(t); }, []);
 
-  const anyOverlayOpen = showAdd || !!editingRoutine || !!deleteTarget;
+  const anyOverlayOpen = showAdd || !!editingEvent || !!deleteTarget;
   useEffect(() => {
     const el = document.getElementById('app-content-scroll');
     if (!el) return;
@@ -236,534 +478,429 @@ export default function RoutinePlanner({ store, setActiveTab }) {
     return () => { el.style.overflowY = 'auto'; };
   }, [anyOverlayOpen]);
 
-  const dayDates = useMemo(() => get5DayDates(), [todayKey]);
+  const calCells = useMemo(() => buildCalendarDays(viewYear, viewMonth), [viewYear, viewMonth]);
 
-  const selectedDate = dayDates[selectedDateIdx];
-  const todayDate = dayDates[2];
+  const todayDateKey = toLocalDateKey(today);
+  const monthName = new Date(viewYear, viewMonth, 1)
+    .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-  const dateKey = selectedDate?.dateKey || toLocalDateKey(new Date());
-  const now = new Date();
+  // Events keyed by dateKey
+  const eventsByDate = useMemo(() => {
+    const map = {};
+    events.forEach(ev => {
+      if (!map[ev.dateKey]) map[ev.dateKey] = [];
+      map[ev.dateKey].push(ev);
+    });
+    return map;
+  }, [events]);
 
-  const dayRoutines = useMemo(() => {
-    if (!selectedDate) return [];
-    return routines
-      .filter(r => r.days.includes(selectedDate.dayOfWeek))
-      .sort((a, b) => a.time.localeCompare(b.time));
-  }, [routines, selectedDate]);
+  // Upcoming events sorted by date then time (from today onwards)
+  const upcomingEvents = useMemo(() => {
+    return [...events]
+      .filter(ev => ev.dateKey >= todayDateKey)
+      .sort((a, b) => {
+        if (a.dateKey !== b.dateKey) return a.dateKey.localeCompare(b.dateKey);
+        return a.time.localeCompare(b.time);
+      });
+  }, [events, todayDateKey]);
 
-  const activeRoutines = useMemo(() => dayRoutines.filter(r => !isRoutineDone(r.id, dateKey)), [dayRoutines, isRoutineDone, dateKey]);
-  const completedRoutines = useMemo(() => dayRoutines.filter(r => isRoutineDone(r.id, dateKey)), [dayRoutines, isRoutineDone, dateKey]);
+  // Group upcoming by dateKey
+  const upcomingGroups = useMemo(() => {
+    const groups = [];
+    const seen = {};
+    upcomingEvents.forEach(ev => {
+      if (!seen[ev.dateKey]) {
+        seen[ev.dateKey] = true;
+        groups.push({ dateKey: ev.dateKey, evs: [] });
+      }
+      groups[groups.length - 1].evs.push(ev);
+    });
+    // fix: rebuild properly
+    const map2 = {};
+    upcomingEvents.forEach(ev => {
+      if (!map2[ev.dateKey]) map2[ev.dateKey] = [];
+      map2[ev.dateKey].push(ev);
+    });
+    return Object.entries(map2).sort(([a], [b]) => a.localeCompare(b));
+  }, [upcomingEvents]);
 
-  const doneCount = completedRoutines.length;
-  const totalCount = dayRoutines.length;
-  const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
+  function formatGroupDate(dateKey) {
+    const d = new Date(dateKey + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  }
+  function getDayLabel(dateKey) {
+    const d = new Date(dateKey + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+  }
 
-  const todayRoutines = useMemo(() => routines.filter(r => r.days.includes(todayDate?.dayOfWeek)), [routines, todayDate]);
-  const nextRoutine = useMemo(() => getNextRoutine(todayRoutines, (id, dk) => isRoutineDone(id, dk || todayDate?.dateKey || dateKey), todayDate?.dateKey), [todayRoutines, isRoutineDone, todayDate, dateKey]);
-
-  const animStyle = (delay = 0) => ({
-    opacity: mounted ? 1 : 0,
-    transform: mounted ? 'none' : 'translateY(12px)',
-    transition: `all 0.5s cubic-bezier(0.16,1,0.3,1) ${delay}s`,
-  });
-
-  const handleSaveEdit = (updates) => {
-    updateRoutine(editingRoutine.id, { ...updates, color: CAT_COLORS[updates.category] });
-    setEditingRoutine(null);
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
+    else setViewMonth(m => m + 1);
   };
 
-  const handleToggle = (id) => {
-    setCompletingId(id);
-    setTimeout(() => {
-      toggleRoutine(id, dateKey);
-      setCompletingId(null);
-    }, 250);
+  const handleCategoryClick = (cat) => {
+    setAddCategory(cat);
+    setShowAdd(true);
+    setCreateExpanded(false);
   };
 
   const handleDelete = () => {
-    if (deleteTarget) {
-      deleteRoutine(deleteTarget.id);
-      setDeleteTarget(null);
-    }
-  };
-
-  const monthYear = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const quote = QUOTES[now.getDate() % QUOTES.length];
-
-  const RoutineCard = ({ routine, isCompleted, index }) => {
-    const color = CAT_COLORS[routine.category] || routine.color || 'var(--accent)';
-    const endTime = computeEndTime(routine.time, routine.duration);
-    const isCompleting = completingId === routine.id;
-
-    return (
-      <div style={{
-        background: isCompleted ? 'var(--surface2)' : 'var(--card)',
-        borderRadius: 14,
-        border: `1px solid ${isCompleted ? 'var(--border)' : 'var(--border-glass)'}`,
-        borderLeft: `3px solid ${isCompleted ? 'var(--green)' : color}`,
-        boxShadow: isCompleted ? 'none' : 'var(--shadow-card)',
-        padding: '10px 12px 10px 14px',
-        opacity: isCompleted ? 0.55 : isCompleting ? 0.4 : 1,
-        transform: isCompleting ? 'scale(0.96)' : 'scale(1)',
-        transition: 'all 0.35s cubic-bezier(0.34,1.56,0.64,1)',
-        animation: mounted ? `slideUpFade 0.4s cubic-bezier(0.16,1,0.3,1) ${index * 0.05}s both` : 'none',
-        animationPlayState: mounted ? 'running' : 'paused',
-        position: 'relative',
-        overflow: 'hidden',
-      }}>
-        {isCompleted && (
-          <div style={{
-            position: 'absolute', top: 0, right: 0,
-            width: 64, height: 64,
-          }}>
-            <div style={{
-              position: 'absolute', top: 8, right: -20,
-              width: 60, height: 18,
-              transform: 'rotate(45deg)',
-              background: 'var(--green)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 9, fontWeight: 800, color: '#fff',
-              letterSpacing: '0.05em', paddingRight: 6,
-              boxShadow: '0 2px 8px rgba(82,183,136,0.3)',
-            }}>DONE</div>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 10,
-            background: isCompleted ? 'var(--green-soft)' : color + '14',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, color: isCompleted ? 'var(--green)' : color,
-            transition: 'all 0.3s',
-          }}>
-            {isCompleted ? (
-              <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
-                <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.8"/>
-                <polyline points="4.5,8 6.5,10 11.5,5.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-            ) : (
-              <div style={{ fontSize: 14 }}>{CAT_ICONS[routine.category]?.()}</div>
-            )}
-          </div>
-
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontSize: 13, fontWeight: 800,
-              color: isCompleted ? 'var(--text-muted)' : 'var(--text)',
-              textDecoration: isCompleted ? 'line-through' : 'none',
-              fontFamily: "'Outfit', sans-serif",
-              letterSpacing: '-0.2px',
-              marginBottom: 3,
-            }}>
-              {routine.title}
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span style={{
-                fontSize: 10, fontWeight: 600, color: 'var(--text2)',
-                fontFamily: "'DM Mono', monospace",
-                display: 'flex', alignItems: 'center', gap: 2,
-              }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="9" height="9">
-                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                </svg>
-                {formatTime(routine.time)}–{formatTime(endTime)}
-              </span>
-              {routine.duration && (
-                <span style={{
-                  fontSize: 10, fontWeight: 600, color: 'var(--text-muted)',
-                }}>
-                  · {routine.duration}min
-                </span>
-              )}
-              <span style={{
-                fontSize: 9, fontWeight: 700, color,
-                background: color + '14',
-                padding: '2px 8px', borderRadius: 5,
-                letterSpacing: '0.02em',
-              }}>
-                {routine.category}
-              </span>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-            <button onClick={() => setEditingRoutine(routine)} style={{
-              width: 26, height: 26, borderRadius: 8,
-              background: 'transparent', border: 'none',
-              cursor: 'pointer', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', color: 'var(--text-muted)',
-              opacity: isCompleted ? 0.3 : 1,
-            }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="10" height="10">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-            </button>
-            {!isCompleted && (
-              <button onClick={() => setDeleteTarget(routine)} style={{
-                width: 26, height: 26, borderRadius: 8,
-                background: 'transparent', border: 'none',
-                cursor: 'pointer', display: 'flex', alignItems: 'center',
-                justifyContent: 'center', color: 'var(--text-muted)',
-              }}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" width="10" height="10">
-                  <polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                </svg>
-              </button>
-            )}
-            <button onClick={() => handleToggle(routine.id)} style={{
-              width: 26, height: 26, borderRadius: 8,
-              background: isCompleted ? 'var(--green-soft)' : 'transparent',
-              border: `1.5px solid ${isCompleted ? 'var(--green)' : 'var(--border)'}`,
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all 0.2s',
-            }}>
-              {isCompleted ? (
-                <svg viewBox="0 0 12 12" fill="none" width="8" height="8">
-                  <polyline points="2,6 5,9 10,3" stroke="var(--green)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              ) : null}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    if (deleteTarget) { deleteEvent(deleteTarget.id); setDeleteTarget(null); }
   };
 
   return (
     <div style={{
-      padding: '20px 0 20px',
+      padding: '0 0 28px',
       display: 'flex', flexDirection: 'column', gap: 0,
       position: 'relative', minHeight: '100%',
+      background: 'var(--bg)',
     }}>
 
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 18px', marginBottom: 18, ...animStyle(0) }}>
-        <button onClick={() => setActiveTab('gym')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center' }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5" /><path d="M12 19l-7-7 7-7" />
+      {/* ── Top bar ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '16px 18px 10px',
+        opacity: mounted ? 1 : 0,
+        transform: mounted ? 'none' : 'translateY(-8px)',
+        transition: 'all 0.4s ease',
+      }}>
+        <button onClick={() => setActiveTab?.('gym')} style={{
+          background: 'none', border: 'none', cursor: 'pointer',
+          padding: 4, display: 'flex', alignItems: 'center',
+        }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text)"
+            strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
           </svg>
         </button>
-        <span style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)' }}>Daily Planner</span>
+        <span style={{
+          fontSize: 17, fontWeight: 800, color: 'var(--text)',
+          fontFamily: "'Outfit', sans-serif",
+        }}>My Calendar</span>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2"
+            strokeLinecap="round" width="18" height="18">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <div style={{
+            width: 28, height: 28, borderRadius: '50%',
+            background: 'var(--accent)', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', fontSize: 12, fontWeight: 800, color: '#fff',
+          }}>{today.getDate()}</div>
+        </div>
       </div>
 
-      {/* ── 5-Date Selector ── */}
-      <div style={{ padding: '0 18px 20px', ...animStyle(0.03) }}>
-        <div style={{
-          display: 'flex', gap: 8,
-          justifyContent: 'center',
-        }}>
-          {dayDates.map((d, i) => {
-            const isSelected = selectedDateIdx === i;
-            const isToday = d.isToday;
-            const isPastNonToday = d.isPast && !isToday;
+      {/* ── Month nav ── */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '0 18px 12px',
+        opacity: mounted ? 1 : 0,
+        transition: 'all 0.4s ease 0.05s',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button onClick={prevMonth} style={navBtnStyle}>‹</button>
+          <span style={{
+            fontSize: 15, fontWeight: 800, color: 'var(--text)',
+            fontFamily: "'Outfit', sans-serif",
+          }}>{monthName}</span>
+          <button onClick={nextMonth} style={navBtnStyle}>›</button>
+        </div>
+        <button onClick={() => {
+          const t = new Date();
+          setViewYear(t.getFullYear());
+          setViewMonth(t.getMonth());
+          setSelectedDateKey(toLocalDateKey(t));
+        }} style={{
+          padding: '5px 12px', borderRadius: 8, fontSize: 12, fontWeight: 700,
+          background: 'var(--accent)', color: '#fff', border: 'none', cursor: 'pointer',
+          fontFamily: 'inherit',
+        }}>Today</button>
+      </div>
+
+      {/* ── Calendar Grid ── */}
+      <div style={{
+        padding: '0 18px',
+        opacity: mounted ? 1 : 0,
+        transition: 'all 0.4s ease 0.08s',
+      }}>
+        {/* Day headers */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 6 }}>
+          {DAY_LABELS.map(d => (
+            <div key={d} style={{
+              textAlign: 'center', fontSize: 10, fontWeight: 700,
+              color: 'var(--text-muted)', padding: '0 0 4px',
+              letterSpacing: '0.04em',
+            }}>{d}</div>
+          ))}
+        </div>
+
+        {/* Day cells */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px 0' }}>
+          {calCells.map((cell, idx) => {
+            const cellDateKey = cell.cur
+              ? `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}-${String(cell.day).padStart(2, '0')}`
+              : null;
+            const isToday = cellDateKey === todayDateKey;
+            const isSelected = cellDateKey === selectedDateKey;
+            const cellEvents = cellDateKey ? (eventsByDate[cellDateKey] || []) : [];
+            const dotColors = [...new Set(cellEvents.map(e => CAT_META[e.category]?.dot))].slice(0, 3);
 
             return (
-              <button key={i} onClick={() => setSelectedDateIdx(i)} style={{
-                flex: 1, maxWidth: 72,
-                padding: '12px 4px 10px',
-                borderRadius: 16,
-                cursor: 'pointer',
-                background: isSelected
-                  ? 'linear-gradient(145deg, var(--accent), var(--accent2))'
-                  : 'var(--card)',
-                border: isSelected
-                  ? '1px solid rgba(255,255,255,0.1)'
-                  : isToday
-                    ? '1.5px solid var(--accent)'
-                    : '1px solid var(--border)',
-                boxShadow: isSelected
-                  ? '0 6px 24px var(--accent-soft)'
-                  : 'var(--shadow-sm)',
-                transform: isSelected ? 'scale(1.05)' : 'scale(1)',
-                transition: 'all 0.3s cubic-bezier(0.34,1.56,0.64,1)',
-                textAlign: 'center',
-                opacity: isPastNonToday && !isSelected ? 0.4 : 1,
-                filter: isPastNonToday && !isSelected ? 'grayscale(0.5)' : 'none',
-              }}>
+              <div
+                key={idx}
+                onClick={() => cell.cur && setSelectedDateKey(cellDateKey)}
+                style={{
+                  textAlign: 'center', padding: '6px 2px',
+                  cursor: cell.cur ? 'pointer' : 'default',
+                  borderRadius: 10,
+                  position: 'relative',
+                }}
+              >
                 <div style={{
-                  fontSize: 10, fontWeight: 700,
-                  color: isSelected ? 'rgba(255,255,255,0.7)' : isToday ? 'var(--accent)' : 'var(--text-muted)',
-                  letterSpacing: '0.02em', marginBottom: 2,
-                }}>
-                  {d.dayName}
-                </div>
-                <div style={{
-                  fontSize: 20, fontWeight: 900,
-                  color: isSelected ? '#fff' : 'var(--text)',
-                  fontFamily: "'Outfit', sans-serif",
-                  lineHeight: 1.1, marginBottom: 2,
-                }}>
-                  {d.dayNum}
-                </div>
-                <div style={{
-                  fontSize: 8, fontWeight: 600, textTransform: 'uppercase',
-                  color: isSelected ? 'rgba(255,255,255,0.5)' : 'var(--text-muted)',
-                  letterSpacing: '0.04em',
-                }}>
-                  {d.month}
-                </div>
-                {isToday && (
+                  width: 30, height: 30, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  margin: '0 auto',
+                  background: isSelected
+                    ? 'var(--accent)'
+                    : isToday
+                      ? 'transparent'
+                      : 'transparent',
+                  border: isToday && !isSelected ? '2px solid var(--accent)' : 'none',
+                  fontSize: 13, fontWeight: isToday || isSelected ? 800 : 500,
+                  color: isSelected
+                    ? '#fff'
+                    : !cell.cur
+                      ? 'var(--border)'
+                      : 'var(--text)',
+                  transition: 'all 0.15s',
+                }}>{cell.day}</div>
+
+                {/* Event dots */}
+                {dotColors.length > 0 && (
                   <div style={{
-                    fontSize: 7, fontWeight: 800, color: isSelected ? '#fff' : 'var(--accent)',
-                    letterSpacing: '0.06em', marginTop: 3,
-                    textTransform: 'uppercase',
+                    display: 'flex', justifyContent: 'center', gap: 2, marginTop: 2,
                   }}>
-                    Today
+                    {dotColors.map((c, i) => (
+                      <div key={i} style={{
+                        width: 5, height: 5, borderRadius: '50%', background: c,
+                      }} />
+                    ))}
                   </div>
                 )}
-              </button>
+              </div>
             );
           })}
         </div>
       </div>
 
-      {/* ── Today's Progress ── */}
-      <div style={{ padding: '0 18px', marginBottom: 16, ...animStyle(0.06) }}>
+      {/* ── Create Schedule section ── */}
+      <div style={{
+        padding: '20px 18px 0',
+        opacity: mounted ? 1 : 0,
+        transition: 'all 0.4s ease 0.12s',
+      }}>
         <div style={{
-          background: 'var(--surface)',
-          borderRadius: 18,
-          border: '1px solid var(--border-glass)',
-          padding: '16px 18px',
-          boxShadow: 'var(--shadow-card)',
+          fontSize: 15, fontWeight: 800, color: 'var(--text)',
+          fontFamily: "'Outfit', sans-serif", marginBottom: 14,
+        }}>Create Schedule</div>
+
+        <div style={{
+          display: 'flex', gap: 14, alignItems: 'center',
+          overflowX: createExpanded ? 'auto' : 'visible',
         }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            marginBottom: 10,
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{
-                width: 8, height: 8, borderRadius: '50%',
-                background: pct === 100 ? 'var(--green)' : 'var(--accent)',
-              }} />
-              <span style={{
-                fontSize: 13, fontWeight: 800, color: 'var(--text)',
-                fontFamily: "'Outfit', sans-serif",
-              }}>
-                Today's Progress
-              </span>
-            </div>
-            <div style={{
-              fontSize: 14, fontWeight: 900, color: pct === 100 ? 'var(--green)' : 'var(--accent)',
-              fontFamily: "'Outfit', sans-serif",
-            }}>
-              {doneCount}/{totalCount}
-              <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>
-                {' '}done
-              </span>
-            </div>
+          {/* "Create" main button */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <button
+              onClick={() => setCreateExpanded(e => !e)}
+              style={{
+                width: 56, height: 56, borderRadius: 18,
+                background: createExpanded ? 'var(--accent)' : 'var(--surface)',
+                border: `2px solid ${createExpanded ? 'var(--accent)' : 'var(--border)'}`,
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: createExpanded ? '#fff' : 'var(--text-muted)',
+                transition: 'all 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+                boxShadow: createExpanded ? '0 6px 20px var(--accent-soft)' : 'var(--shadow-sm)',
+                flexShrink: 0,
+              }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"
+                strokeLinecap="round" width="22" height="22">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                <line x1="16" y1="2" x2="16" y2="6"/>
+                <line x1="8" y1="2" x2="8" y2="6"/>
+                <line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+            </button>
+            <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>Create</span>
           </div>
 
+          {/* Category bubbles – slide in when expanded */}
           <div style={{
-            height: 6, background: 'var(--border)', borderRadius: 99,
-            overflow: 'hidden', position: 'relative',
+            display: 'flex', gap: 14, alignItems: 'center',
+            overflow: 'hidden',
+            maxWidth: createExpanded ? 400 : 0,
+            opacity: createExpanded ? 1 : 0,
+            transition: 'max-width 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease',
           }}>
-            <div style={{
-              height: '100%', width: mounted ? `${pct}%` : '0%',
-              background: `linear-gradient(90deg, var(--accent), var(--green))`,
-              borderRadius: 99,
-              transition: 'width 0.8s cubic-bezier(0.34,1.56,0.64,1)',
-              position: 'relative',
-            }}>
-              <div style={{
-                position: 'absolute', right: 0, top: 0,
-                width: 6, height: 6, borderRadius: '50%',
-                background: '#fff', opacity: 0.6,
-              }} />
-            </div>
-          </div>
-
-          <div style={{
-            display: 'flex', justifyContent: 'space-between', marginTop: 4,
-            fontSize: 9, color: 'var(--text-muted)', fontWeight: 600,
-          }}>
-            <span>0%</span>
-            <span style={{ color: pct >= 50 ? 'var(--accent)' : 'var(--text-muted)' }}>50%</span>
-            <span style={{ color: pct >= 100 ? 'var(--green)' : 'var(--text-muted)' }}>100%</span>
+            {CATEGORIES.map((cat, i) => {
+              const meta = CAT_META[cat];
+              return (
+                <div
+                  key={cat}
+                  style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
+                    flexShrink: 0,
+                    opacity: createExpanded ? 1 : 0,
+                    transform: createExpanded ? 'scale(1)' : 'scale(0.7)',
+                    transition: `all 0.35s cubic-bezier(0.34,1.56,0.64,1) ${i * 0.05}s`,
+                  }}
+                >
+                  <button
+                    onClick={() => handleCategoryClick(cat)}
+                    style={{
+                      width: 56, height: 56, borderRadius: 18,
+                      background: meta.bg,
+                      border: `2px solid ${meta.color}33`,
+                      cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: meta.color,
+                      transition: 'all 0.2s',
+                      boxShadow: `0 4px 14px ${meta.color}22`,
+                    }}
+                  >
+                    {meta.icon()}
+                  </button>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                    {cat}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* ── Next Routine Widget ── */}
-      {nextRoutine && selectedDate?.isToday && (
-        <div style={{ padding: '0 18px', marginBottom: 16, ...animStyle(0.08) }}>
-          <div style={{
-            background: 'linear-gradient(135deg, var(--accent-soft), transparent)',
-            borderRadius: 18,
-            border: '1px solid var(--accent-soft)',
-            padding: '14px 18px',
-            display: 'flex', alignItems: 'center', gap: 14,
-          }}>
-            <div style={{
-              width: 38, height: 38, borderRadius: 12,
-              background: 'var(--accent)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              flexShrink: 0, color: '#fff',
-              animation: 'ringPulse 2s infinite',
-            }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" width="18" height="18">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-              </svg>
-            </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{
-                fontSize: 10, fontWeight: 700, color: 'var(--accent)',
-                letterSpacing: '0.06em', marginBottom: 2, textTransform: 'uppercase',
-              }}>
-                Next Routine
-              </div>
-              <div style={{
-                fontSize: 15, fontWeight: 800, color: 'var(--text)',
-                fontFamily: "'Outfit', sans-serif",
-              }}>
-                {nextRoutine.title}
-              </div>
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 10, marginTop: 3,
-                fontSize: 12, color: 'var(--text2)', fontWeight: 500,
-              }}>
-                <span>{formatTime(nextRoutine.time)}</span>
-                {(() => {
-                  const remaining = getTimeRemaining(nextRoutine.time);
-                  return remaining ? (
-                    <span style={{
-                      background: 'var(--accent-soft)', color: 'var(--accent)',
-                      fontWeight: 700, fontSize: 11, padding: '2px 10px',
-                      borderRadius: 6,
-                    }}>
-                      in {remaining}
-                    </span>
-                  ) : (
-                    <span style={{ color: 'var(--text-muted)' }}>starting now</span>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Active Routines Section ── */}
-      <div style={{ padding: '0 18px', ...animStyle(0.10) }}>
+      {/* ── Upcoming Schedule ── */}
+      <div style={{
+        padding: '20px 18px 0',
+        opacity: mounted ? 1 : 0,
+        transition: 'all 0.4s ease 0.16s',
+      }}>
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: 12,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <h2 style={{
-              fontSize: 16, fontWeight: 800, color: 'var(--text)', margin: 0,
-              fontFamily: "'Outfit', sans-serif",
-            }}>
-              {selectedDate?.isToday ? "Today's Routines" : `${selectedDate?.dayName}'s Routines`}
-            </h2>
-            <span style={{
-              fontSize: 10, fontWeight: 700, color: 'var(--accent)',
-              background: 'var(--accent-soft)', padding: '2px 10px', borderRadius: 8,
-            }}>
-              {totalCount}
-            </span>
-          </div>
-          <button onClick={() => setShowAdd(true)} style={{
-            width: 32, height: 32, borderRadius: 10, border: 'none',
-            background: 'var(--accent-soft)', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--accent)', fontSize: 18, fontWeight: 300, lineHeight: 1,
-            fontFamily: 'inherit',
-            transition: 'all 0.2s',
-          }}>+</button>
-        </div>
+          fontSize: 15, fontWeight: 800, color: 'var(--text)',
+          fontFamily: "'Outfit', sans-serif", marginBottom: 14,
+        }}>Schedule</div>
 
-        {dayRoutines.length === 0 ? (
+        {upcomingGroups.length === 0 ? (
           <div style={{
             padding: '36px 24px', textAlign: 'center',
             background: 'var(--glass)', borderRadius: 20,
             border: '1.5px dashed var(--border)',
-            marginBottom: 16,
           }}>
-            <div onClick={() => setShowAdd(true)} style={{
+            <button onClick={() => { setCreateExpanded(true); }} style={{
               width: 52, height: 52, borderRadius: 16,
               background: 'var(--accent-soft)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              margin: '0 auto 14px', cursor: 'pointer',
-              transition: 'background 0.2s',
+              margin: '0 auto 14px', cursor: 'pointer', border: 'none',
             }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" width="24" height="24">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2"
+                strokeLinecap="round" width="24" height="24">
                 <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
               </svg>
+            </button>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)', marginBottom: 5, fontFamily: "'Outfit', sans-serif" }}>
+              No upcoming events
             </div>
-            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--text)', marginBottom: 6, fontFamily: "'Outfit', sans-serif" }}>
-              No routines for {selectedDate?.dayName || 'today'}
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              Tap Create above to add your first event
             </div>
           </div>
         ) : (
-          <>
-            {/* Active Routines */}
-            {activeRoutines.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: activeRoutines.length > 0 ? 20 : 0 }}>
-                {activeRoutines.map((r, idx) => (
-                  <RoutineCard key={r.id} routine={r} isCompleted={false} index={idx} />
-                ))}
-              </div>
-            )}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {upcomingGroups.map(([dateKey, evs]) => {
+              const meta0 = CAT_META[evs[0]?.category] || CAT_META.Meeting;
+              const dayLabel = getDayLabel(dateKey);
+              const dateLabel = formatGroupDate(dateKey);
 
-            {/* Completed Section */}
-            {completedRoutines.length > 0 && (
-              <>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
-                  marginBottom: 10, paddingTop: 2,
-                }}>
-                  <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                  <span style={{
-                    fontSize: 11, fontWeight: 700, color: 'var(--green)',
-                    letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: 5,
+              return (
+                <div key={dateKey}>
+                  {/* Date header row */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10,
                   }}>
-                    <svg viewBox="0 0 12 12" fill="none" width="11" height="11">
-                      <polyline points="2,6 5,9 10,3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Completed ({completedRoutines.length})
-                  </span>
-                  <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {completedRoutines.map((r, idx) => (
-                    <RoutineCard key={r.id} routine={r} isCompleted={true} index={idx} />
-                  ))}
-                </div>
-              </>
-            )}
+                    {/* Day circle */}
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 12,
+                      background: meta0.bg,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0, color: meta0.color,
+                    }}>
+                      {meta0.icon()}
+                    </div>
+                    <div>
+                      <div style={{
+                        fontSize: 13, fontWeight: 800, color: 'var(--text)',
+                        fontFamily: "'Outfit', sans-serif",
+                      }}>{dateLabel}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>{dayLabel}</div>
+                    </div>
+                    <div style={{ flex: 1 }} />
+                    {/* ⋯ */}
+                    <button style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: 'var(--text-muted)', fontSize: 18, fontWeight: 700, padding: 4,
+                    }}>⋯</button>
+                  </div>
 
-            {/* Mark all complete notice */}
-            {totalCount > 0 && doneCount === totalCount && (
-              <div style={{
-                textAlign: 'center', padding: '14px 0 4px',
-                fontSize: 13, fontWeight: 700, color: 'var(--green)',
-                fontFamily: "'Outfit', sans-serif",
-                animation: mounted ? 'fadeUp 0.5s ease' : 'none',
-              }}>
-                <span style={{ marginRight: 6 }}>🎉</span>
-                All routines done for {selectedDate?.isToday ? 'today' : selectedDate?.dayName}!
-              </div>
-            )}
-          </>
+                  {/* Event cards for this date */}
+                  <div style={{
+                    display: 'flex', flexDirection: 'column', gap: 10,
+                    paddingLeft: 52, // indent under the icon
+                    position: 'relative',
+                  }}>
+                    {/* Timeline line */}
+                    {evs.length > 1 && (
+                      <div style={{
+                        position: 'absolute', left: 19, top: 0, bottom: 0,
+                        width: 2, background: 'var(--border)',
+                        borderRadius: 2,
+                      }} />
+                    )}
+                    {evs.map(ev => (
+                      <ScheduleCard
+                        key={ev.id}
+                        event={ev}
+                        onEdit={setEditingEvent}
+                        onDelete={setDeleteTarget}
+                        onToggleReminder={toggleReminder}
+                      />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
       {/* ── Modals ── */}
-      <RoutineModal
+      <EventModal
         open={showAdd}
         onClose={() => setShowAdd(false)}
-        onSave={(data) => addRoutine({ ...data, color: CAT_COLORS[data.category] })}
+        onSave={addEvent}
+        defaultCategory={addCategory}
       />
-      {editingRoutine && (
-        <RoutineModal
-          open={!!editingRoutine}
-          onClose={() => setEditingRoutine(null)}
-          onSave={handleSaveEdit}
-          initial={editingRoutine}
+      {editingEvent && (
+        <EventModal
+          open={!!editingEvent}
+          onClose={() => setEditingEvent(null)}
+          onSave={(data) => { updateEvent(editingEvent.id, data); setEditingEvent(null); }}
+          initial={editingEvent}
         />
       )}
       <ConfirmDeleteModal
@@ -775,3 +912,9 @@ export default function RoutinePlanner({ store, setActiveTab }) {
     </div>
   );
 }
+
+const navBtnStyle = {
+  background: 'none', border: 'none', cursor: 'pointer',
+  fontSize: 20, fontWeight: 700, color: 'var(--text)',
+  padding: '0 4px', lineHeight: 1, fontFamily: 'inherit',
+};

@@ -164,34 +164,10 @@ export function useAppStore(userId, displayName) {
       if (read('challenges', data.appSettings?.challenges) !== undefined) setChallenges(read('challenges', data.appSettings?.challenges));
 
       const remoteRoutines = read('routines', data.appSettings?.routines);
-      if (remoteRoutines !== undefined) {
-        if (!isFirstSync) {
-          setRoutines(remoteRoutines);
-        } else {
-          setRoutines(prev => {
-            if (prev.length === 0) return remoteRoutines;
-            const localIds = new Set(prev.map(r => r.id));
-            const remoteOnly = remoteRoutines.filter(r => !localIds.has(r.id));
-            return [...prev, ...remoteOnly];
-          });
-        }
-      }
+      if (remoteRoutines !== undefined) setRoutines(remoteRoutines);
 
       const remoteGymPlan = read('gymWeekPlan', data.appSettings?.gymWeekPlan);
-      if (remoteGymPlan !== undefined) {
-        if (!isFirstSync) {
-          setGymWeekPlanState(remoteGymPlan);
-        } else {
-          setGymWeekPlanState(prev => {
-            if (!prev) return remoteGymPlan;
-            const merged = { ...remoteGymPlan };
-            Object.entries(prev).forEach(([day, plan]) => {
-              if (plan.category || plan.exercises.length) merged[day] = plan;
-            });
-            return merged;
-          });
-        }
-      }
+      if (remoteGymPlan !== undefined) setGymWeekPlanState(remoteGymPlan);
 
       // ── Daily data (top-level fields with legacy dailyData fallback) ──────
       const buildFromLegacy = () => {
@@ -212,33 +188,9 @@ export function useAppStore(userId, displayName) {
       const legacy = buildFromLegacy();
 
       const remoteWI = read('waterIntake', legacy.waterIntake);
-      if (Object.keys(remoteWI).length) {
-        if (!isFirstSync) {
-          setWaterIntake(prev => ({ ...prev, ...remoteWI }));
-        } else {
-          setWaterIntake(prev => {
-            const r = { ...prev };
-            Object.entries(remoteWI).forEach(([k, v]) => { r[k] = (r[k] || 0) + v; });
-            return r;
-          });
-        }
-      }
+      if (Object.keys(remoteWI).length) setWaterIntake(prev => ({ ...prev, ...remoteWI }));
       const remoteMeals = read('meals', legacy.meals);
-      if (Object.keys(remoteMeals).length) {
-        if (!isFirstSync) {
-          setMeals(prev => ({ ...prev, ...remoteMeals }));
-        } else {
-          setMeals(prev => {
-            const r = { ...prev };
-            Object.entries(remoteMeals).forEach(([dk, remoteList]) => {
-              const localList = r[dk] || [];
-              const remoteIds = new Set(remoteList.map(x => x.id));
-              r[dk] = [...remoteList, ...localList.filter(x => !remoteIds.has(x.id))];
-            });
-            return r;
-          });
-        }
-      }
+      if (Object.keys(remoteMeals).length) setMeals(prev => ({ ...prev, ...remoteMeals }));
       const remoteCH = read('completionHistory', legacy.completionHistory);
       if (Object.keys(remoteCH).length) setCompletionHistory(prev => ({ ...prev, ...remoteCH }));
       const remoteWH = read('waterHistory', legacy.waterHistory);
