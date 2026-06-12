@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { GlassCard, PillButton, inputStyle, Portal } from '../components/UI';
 import { getStats } from '../data/statsService';
-import { signOut } from '../firebase/auth';
+import { signOut, auth } from '../firebase/auth';
+import { updateProfile } from 'firebase/auth';
 import {
   getUserProfile, createUserProfile,
   updateUserHandle, updateUserProfile, getFollowers,
@@ -146,6 +147,7 @@ export default function Profile({ store, user, onMessageUser }) {
     setEditName(false);
     try {
       if (profile) await updateUserProfile(uid, { displayName: trimmed });
+      if (auth.currentUser) await updateProfile(auth.currentUser, { displayName: trimmed });
     } catch {}
   };
 
@@ -163,6 +165,7 @@ export default function Profile({ store, user, onMessageUser }) {
       }
       setName(trimmedName);
       setProfileName(trimmedName);
+      if (auth.currentUser) await updateProfile(auth.currentUser, { displayName: trimmedName });
       await loadProfile();
       setShowProfileSettings(false);
     } catch (e) {

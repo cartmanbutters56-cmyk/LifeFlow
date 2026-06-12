@@ -66,9 +66,12 @@ export function useAppStore(userId, displayName) {
 
   const todayDayName = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
 
-  // ─── Flag: true while applying incoming Firestore data ──────────────────────
-  // Prevents echo-writing remote changes back to Firestore
+  // ─── Flags ──────────────────────────────────────────────────────────────────
+  // isSyncing: true while applying incoming Firestore data — prevents echo writes
   const isSyncing = useRef(false);
+  // initialSyncDone: true after the first onSnapshot fires — prevents pushing
+  // stale localStorage data before Firestore has caught up
+  const initialSyncDone = useRef(false);
 
   useEffect(() => { save('themeMode', themeMode); }, [themeMode]);
   useEffect(() => { save('profileName', profileName); }, [profileName]);
@@ -97,9 +100,9 @@ export function useAppStore(userId, displayName) {
     sessionId.current = sid;
     const ref = doc(db, 'users', userId);
 
-    // Register this session
+    // Register this session (do NOT write displayName — it's managed separately
+    // via updateUserProfile to avoid overwriting the value set by another device)
     setDoc(ref, {
-      displayName: profileName || displayName || '',
       currentSession: sid,
       lastSeen: serverTimestamp(),
     }, { merge: true }).catch(() => {});
@@ -108,6 +111,7 @@ export function useAppStore(userId, displayName) {
     const unsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) return;
       const data = snap.data();
+      initialSyncDone.current = true;
 
       // ── Session: kick duplicate logins ──────────────────────────────────────
       if (data.currentSession && data.currentSession !== sessionId.current) {
@@ -173,7 +177,7 @@ export function useAppStore(userId, displayName) {
 
   // ─── Firestore: push settings when they change (skip if syncing) ─────────
   useEffect(() => {
-    if (!userId || isSyncing.current) return;
+    if (!userId || isSyncing.current || !initialSyncDone.current) return;
     const ref = doc(db, 'users', userId);
     setDoc(ref, {
       appSettings: { themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges }
@@ -182,7 +186,7 @@ export function useAppStore(userId, displayName) {
 
   // ─── Firestore: push daily data when it changes (skip if syncing) ────────
   useEffect(() => {
-    if (!userId || isSyncing.current) return;
+    if (!userId || isSyncing.current || !initialSyncDone.current) return;
 
     const allKeys = [...new Set([
       ...Object.keys(waterIntake),
@@ -208,7 +212,6 @@ export function useAppStore(userId, displayName) {
     });
 
     const ref = doc(db, 'users', userId);
-    // Use merge:true so partial updates from other devices aren't wiped
     setDoc(ref, { dailyData: daily }, { merge: true }).catch(() => {});
   }, [userId, waterIntake, meals, completionHistory, routineCompletions, waterHistory]);
 
