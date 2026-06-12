@@ -207,9 +207,35 @@ export function useAppStore(userId, displayName) {
             if (day?.routineCompletions) Object.assign(rc, day.routineCompletions);
           });
 
-          // Merge incoming data over local state (remote wins for cross-device sync)
-          if (Object.keys(wi).length) setWaterIntake(prev => ({ ...prev, ...wi }));
-          if (Object.keys(m).length) setMeals(prev => ({ ...prev, ...m }));
+          // Merge incoming data over local state
+          if (Object.keys(wi).length) {
+            if (!isFirstSync) {
+              setWaterIntake(prev => ({ ...prev, ...wi }));
+            } else {
+              // Keep the larger intake per date so local additions aren't lost
+              setWaterIntake(prev => {
+                const r = { ...prev };
+                Object.entries(wi).forEach(([k, v]) => { r[k] = Math.max(r[k] || 0, v); });
+                return r;
+              });
+            }
+          }
+          if (Object.keys(m).length) {
+            if (!isFirstSync) {
+              setMeals(prev => ({ ...prev, ...m }));
+            } else {
+              // Keep local meals that don't exist in the remote set
+              setMeals(prev => {
+                const r = { ...prev };
+                Object.entries(m).forEach(([dk, remoteList]) => {
+                  const localList = r[dk] || [];
+                  const remoteIds = new Set(remoteList.map(x => x.id));
+                  r[dk] = [...remoteList, ...localList.filter(x => !remoteIds.has(x.id))];
+                });
+                return r;
+              });
+            }
+          }
           if (Object.keys(ch).length) setCompletionHistory(prev => ({ ...prev, ...ch }));
           if (Object.keys(wh).length) setWaterHistory(prev => ({ ...prev, ...wh }));
           if (Object.keys(rc).length) setRoutineCompletions(prev => ({ ...prev, ...rc }));
