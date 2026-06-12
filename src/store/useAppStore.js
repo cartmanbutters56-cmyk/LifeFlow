@@ -8,6 +8,8 @@ import { signOut } from '../firebase/auth';
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const weekDates = buildWeekDates();
 const OZ_TO_ML = 29.5735;
+const defaultWeekPlan = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
+  .reduce((acc, day) => ({ ...acc, [day]: { category: '', exercises: [] } }), {});
 
 const seedChallenges = [
   { id:'ch1', title:'Hydration Hero', description:'Hit your water goal every day', icon:'💧', category:'water', color:'#06B6D4', duration:7, status:'available', startDate:null, completedDate:null, checkIns:{} },
@@ -58,6 +60,7 @@ export function useAppStore(userId, displayName) {
     if (data && data.length) return data;
     return seedChallenges;
   });
+  const [gymWeekPlan, setGymWeekPlanState] = useState(() => load('gymPlan', null));
   const [friendsRefreshKey, setFriendsRefreshKey] = useState(0);
   const refreshFriends = useCallback(() => setFriendsRefreshKey(k => k + 1), []);
 
@@ -72,6 +75,9 @@ export function useAppStore(userId, displayName) {
   // initialSyncDone: true after the first onSnapshot fires — prevents pushing
   // stale localStorage data before Firestore has caught up
   const initialSyncDone = useRef(false);
+  // syncGeneration: bumped after initial sync completes so pending user changes
+  // made before the first snapshot get pushed to Firestore
+  const [syncGeneration, setSyncGeneration] = useState(0);
 
   useEffect(() => { save('themeMode', themeMode); }, [themeMode]);
   useEffect(() => { save('profileName', profileName); }, [profileName]);
@@ -111,33 +117,33 @@ export function useAppStore(userId, displayName) {
     const unsub = onSnapshot(ref, (snap) => {
       if (!snap.exists()) return;
       const data = snap.data();
+
+      const isFirstSync = !initialSyncDone.current;
       initialSyncDone.current = true;
+      isSyncing.current = true;
 
       // ── Session: kick duplicate logins ──────────────────────────────────────
       if (data.currentSession && data.currentSession !== sessionId.current) {
+        isSyncing.current = false;
         signOut().catch(() => {});
         return;
       }
 
       // ── Profile name ────────────────────────────────────────────────────────
       if (data.displayName && data.displayName !== currentProfileNameRef.current) {
-        isSyncing.current = true;
         setProfileName(data.displayName);
-        // Let React flush before clearing the flag
-        setTimeout(() => { isSyncing.current = false; }, 0);
       }
 
       // ── App settings ────────────────────────────────────────────────────────
       const s = data.appSettings;
       if (s) {
-        isSyncing.current = true;
         if (s.themeMode !== undefined) setThemeMode(s.themeMode);
         if (s.waterUnit !== undefined) setWaterUnitState(s.waterUnit);
         if (s.waterGoal !== undefined) setWaterGoalState(s.waterGoal);
         if (s.calorieGoal !== undefined) setCalorieGoalState(s.calorieGoal);
         if (s.routines !== undefined) setRoutines(s.routines);
         if (s.challenges !== undefined) setChallenges(s.challenges);
-        setTimeout(() => { isSyncing.current = false; }, 0);
+        if (s.gymWeekPlan !== undefined) setGymWeekPlanState(s.gymWeekPlan);
       }
 
       // ── Daily data ──────────────────────────────────────────────────────────
@@ -145,8 +151,6 @@ export function useAppStore(userId, displayName) {
       if (dd) {
         const dateKeys = Object.keys(dd).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k));
         if (dateKeys.length) {
-          isSyncing.current = true;
-
           let wi = {}, m = {}, ch = {}, wh = {}, rc = {};
           dateKeys.forEach(dk => {
             const day = dd[dk];
@@ -163,10 +167,15 @@ export function useAppStore(userId, displayName) {
           if (Object.keys(ch).length) setCompletionHistory(prev => ({ ...prev, ...ch }));
           if (Object.keys(wh).length) setWaterHistory(prev => ({ ...prev, ...wh }));
           if (Object.keys(rc).length) setRoutineCompletions(prev => ({ ...prev, ...rc }));
-
-          setTimeout(() => { isSyncing.current = false; }, 0);
         }
       }
+
+      // Clear syncing flag after React flushes, then bump the generation
+      // so any user changes made before initial sync get pushed to Firestore
+      setTimeout(() => {
+        isSyncing.current = false;
+        if (isFirstSync) setSyncGeneration(g => g + 1);
+      }, 0);
     }, (err) => {
       console.warn('Firestore listener error:', err);
     });
@@ -180,9 +189,9 @@ export function useAppStore(userId, displayName) {
     if (!userId || isSyncing.current || !initialSyncDone.current) return;
     const ref = doc(db, 'users', userId);
     setDoc(ref, {
-      appSettings: { themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges }
+      appSettings: { themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges, gymWeekPlan }
     }, { merge: true }).catch(() => {});
-  }, [userId, themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges]);
+  }, [userId, themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges, gymWeekPlan, syncGeneration]);
 
   // ─── Firestore: push daily data when it changes (skip if syncing) ────────
   useEffect(() => {
@@ -213,7 +222,7 @@ export function useAppStore(userId, displayName) {
 
     const ref = doc(db, 'users', userId);
     setDoc(ref, { dailyData: daily }, { merge: true }).catch(() => {});
-  }, [userId, waterIntake, meals, completionHistory, routineCompletions, waterHistory]);
+  }, [userId, waterIntake, meals, completionHistory, routineCompletions, waterHistory, syncGeneration]);
 
   // Apply effective theme to body
   useEffect(() => {
@@ -244,6 +253,7 @@ export function useAppStore(userId, displayName) {
   useEffect(() => { save('wh', waterHistory); }, [waterHistory]);
   useEffect(() => { save('calgoal', calorieGoal); }, [calorieGoal]);
   useEffect(() => { save('challenges', challenges); }, [challenges]);
+  useEffect(() => { save('gymPlan', gymWeekPlan); }, [gymWeekPlan]);
   useEffect(() => { save('ds', dailySummaries); }, [dailySummaries]);
 
   // ─── Midnight Detection ──────────────────────────────────────────────────────
@@ -348,6 +358,9 @@ export function useAppStore(userId, displayName) {
   }), [waterGoal]);
   const resetWater = useCallback(() => setWaterIntake(prev => ({ ...prev, [todayKey]: 0 })), []);
   const setWaterGoal = useCallback(g => setWaterGoalState(g), []);
+  const setGymWeekPlan = useCallback(fn => {
+    setGymWeekPlanState(prev => typeof fn === 'function' ? fn(prev) : fn);
+  }, []);
 
   // ─── Challenges ──────────────────────────────────────────────────────────────
   const startChallenge = useCallback((id) => {
@@ -490,5 +503,6 @@ export function useAppStore(userId, displayName) {
     todayMeals, todayMealsDone,
     resetAllData,
     friendsRefreshKey, refreshFriends,
+    gymWeekPlan, setGymWeekPlan,
   };
 }

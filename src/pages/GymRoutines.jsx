@@ -40,24 +40,20 @@ function getUnitLabels(category, unitType) {
 const DEFAULT_WEEK = DAYS.reduce((acc, day) => ({ ...acc, [day]: { category: '', exercises: [] } }), {});
 
 export default function GymRoutines({ store, user, setActiveTab }) {
-  const gymKey = user?.uid ? `gym_${user.uid}_week_plan` : 'gym_week_plan';
+  const { gymWeekPlan, setGymWeekPlan } = store;
 
-  const [weekPlan, _setWeekPlan] = useState(DEFAULT_WEEK);
+  const [weekPlan, _setWeekPlan] = useState(() => gymWeekPlan || DEFAULT_WEEK);
+  useEffect(() => {
+    if (gymWeekPlan) _setWeekPlan(gymWeekPlan);
+  }, [gymWeekPlan]);
+
   const setWeekPlan = useCallback((fn) => {
     _setWeekPlan(prev => {
       const next = typeof fn === 'function' ? fn(prev) : fn;
-      try { localStorage.setItem(gymKey, JSON.stringify(next)); } catch {}
+      setGymWeekPlan(next);
       return next;
     });
-  }, [gymKey]);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(gymKey);
-      if (saved) setWeekPlan(JSON.parse(saved));
-      else setWeekPlan(DEFAULT_WEEK);
-    } catch { setWeekPlan(DEFAULT_WEEK); }
-  }, [gymKey]);
+  }, [setGymWeekPlan]);
 
   const [selectedDay, setSelectedDay] = useState(() => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
