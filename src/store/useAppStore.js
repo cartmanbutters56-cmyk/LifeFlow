@@ -162,13 +162,33 @@ export function useAppStore(userId, displayName) {
         if (s.waterGoal !== undefined) setWaterGoalState(s.waterGoal);
         if (s.calorieGoal !== undefined) setCalorieGoalState(s.calorieGoal);
         if (s.challenges !== undefined) setChallenges(s.challenges);
-        // For routines and gymWeekPlan, only overwrite from Firestore on the
-        // first sync if the user hasn't already made local changes (non-default)
+        // For routines and gymWeekPlan, merge on first sync so local changes
+        // made before the snapshot arrived are preserved alongside Firestore data
         if (s.routines !== undefined) {
-          if (!isFirstSync || routinesRef.current.length === 0) setRoutines(s.routines);
+          if (!isFirstSync) {
+            setRoutines(s.routines);
+          } else {
+            setRoutines(prev => {
+              if (prev.length === 0) return s.routines;
+              const localIds = new Set(prev.map(r => r.id));
+              const remoteOnly = s.routines.filter(r => !localIds.has(r.id));
+              return [...prev, ...remoteOnly];
+            });
+          }
         }
         if (s.gymWeekPlan !== undefined) {
-          if (!isFirstSync || gymPlanRef.current === null) setGymWeekPlanState(s.gymWeekPlan);
+          if (!isFirstSync) {
+            setGymWeekPlanState(s.gymWeekPlan);
+          } else {
+            setGymWeekPlanState(prev => {
+              if (!prev) return s.gymWeekPlan;
+              const merged = { ...s.gymWeekPlan };
+              Object.entries(prev).forEach(([day, plan]) => {
+                if (plan.category || plan.exercises.length) merged[day] = plan;
+              });
+              return merged;
+            });
+          }
         }
       }
 
