@@ -60,7 +60,23 @@ export function useAppStore(userId, displayName) {
     if (data && data.length) return data;
     return seedChallenges;
   });
-  const [gymWeekPlan, setGymWeekPlanState] = useState(() => load('gymPlan', null));
+  const [gymWeekPlan, setGymWeekPlanState] = useState(() => {
+    const fromNew = load('gymPlan', null);
+    if (fromNew) return fromNew;
+    // Migrate from old localStorage key used by the previous version
+    if (userId) {
+      try {
+        const oldKey = `gym_${userId}_week_plan`;
+        const oldRaw = localStorage.getItem(oldKey);
+        if (oldRaw) {
+          const oldData = JSON.parse(oldRaw);
+          save('gymPlan', oldData);
+          return oldData;
+        }
+      } catch {}
+    }
+    return null;
+  });
   const [friendsRefreshKey, setFriendsRefreshKey] = useState(0);
   const refreshFriends = useCallback(() => setFriendsRefreshKey(k => k + 1), []);
 
@@ -98,6 +114,10 @@ export function useAppStore(userId, displayName) {
   const sessionId = useRef(null);
   const currentProfileNameRef = useRef(profileName);
   useEffect(() => { currentProfileNameRef.current = profileName; }, [profileName]);
+  const routinesRef = useRef(routines);
+  useEffect(() => { routinesRef.current = routines; }, [routines]);
+  const gymPlanRef = useRef(gymWeekPlan);
+  useEffect(() => { gymPlanRef.current = gymWeekPlan; }, [gymWeekPlan]);
 
   useEffect(() => {
     if (!userId) return;
@@ -141,9 +161,15 @@ export function useAppStore(userId, displayName) {
         if (s.waterUnit !== undefined) setWaterUnitState(s.waterUnit);
         if (s.waterGoal !== undefined) setWaterGoalState(s.waterGoal);
         if (s.calorieGoal !== undefined) setCalorieGoalState(s.calorieGoal);
-        if (s.routines !== undefined) setRoutines(s.routines);
         if (s.challenges !== undefined) setChallenges(s.challenges);
-        if (s.gymWeekPlan !== undefined) setGymWeekPlanState(s.gymWeekPlan);
+        // For routines and gymWeekPlan, only overwrite from Firestore on the
+        // first sync if the user hasn't already made local changes (non-default)
+        if (s.routines !== undefined) {
+          if (!isFirstSync || routinesRef.current.length === 0) setRoutines(s.routines);
+        }
+        if (s.gymWeekPlan !== undefined) {
+          if (!isFirstSync || gymPlanRef.current === null) setGymWeekPlanState(s.gymWeekPlan);
+        }
       }
 
       // ── Daily data ──────────────────────────────────────────────────────────
