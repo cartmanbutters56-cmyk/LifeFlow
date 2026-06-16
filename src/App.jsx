@@ -191,16 +191,40 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      setAuthLoading(false);
-    });
+    var unsub = null;
+    var cancelled = false;
+
     getRedirectResult(auth).then(function (result) {
+      if (cancelled) return;
       if (result) {
+        // Google sign-in redirect completed — set user directly
+        setUser(result.user);
+        setAuthLoading(false);
         createUserProfile(result.user.uid, result.user.displayName || '', result.user.displayName || '', '').catch(function () {});
+        // Still listen for future auth state changes
+        unsub = onAuthStateChanged(auth, function (firebaseUser) {
+          setUser(firebaseUser);
+        });
+        return;
       }
-    }).catch(function () {});
-    return () => unsub();
+      // No redirect — listen for normal auth state
+      unsub = onAuthStateChanged(auth, function (firebaseUser) {
+        setUser(firebaseUser);
+        setAuthLoading(false);
+      });
+    }).catch(function () {
+      // getRedirectResult failed — fall back to normal listener
+      if (cancelled) return;
+      unsub = onAuthStateChanged(auth, function (firebaseUser) {
+        setUser(firebaseUser);
+        setAuthLoading(false);
+      });
+    });
+
+    return function () {
+      cancelled = true;
+      if (unsub) unsub();
+    };
   }, []);
 
   if (authLoading) {
