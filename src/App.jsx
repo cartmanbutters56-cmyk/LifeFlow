@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from './store/useAppStore';
-import { auth, onAuthStateChanged, getRedirectResult } from './firebase/auth';
-import { createUserProfile } from './firebase/friends';
+import { auth, onAuthStateChanged } from './firebase/auth';
 
 import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
@@ -191,50 +190,25 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
-    var unsub = null;
     var cancelled = false;
 
-    // Fallback: if auth takes >5s, stop loading to show login/error
+    // Fallback: stop loading after 4s if auth hangs
     var fallbackTimer = setTimeout(function () {
       if (cancelled) return;
-      console.warn('[Auth] timed out, forcing stop');
       setAuthLoading(false);
-    }, 5000);
+    }, 4000);
 
-    getRedirectResult(auth).then(function (result) {
+    var unsub = onAuthStateChanged(auth, function (firebaseUser) {
       clearTimeout(fallbackTimer);
       if (cancelled) return;
-      console.log('[Auth] getRedirectResult:', result ? result.user.email : 'null');
-      if (result) {
-        setUser(result.user);
-        setAuthLoading(false);
-        createUserProfile(result.user.uid, result.user.displayName || '', result.user.displayName || '', '').catch(function () {});
-        unsub = onAuthStateChanged(auth, function (firebaseUser) {
-          console.log('[Auth] onAuthStateChanged after redirect:', firebaseUser?.email);
-          setUser(firebaseUser);
-        });
-        return;
-      }
-      unsub = onAuthStateChanged(auth, function (firebaseUser) {
-        console.log('[Auth] onAuthStateChanged:', firebaseUser?.email);
-        setUser(firebaseUser);
-        setAuthLoading(false);
-      });
-    }).catch(function (err) {
-      clearTimeout(fallbackTimer);
-      if (cancelled) return;
-      console.error('[Auth] getRedirectResult error:', err.code, err.message);
-      unsub = onAuthStateChanged(auth, function (firebaseUser) {
-        console.log('[Auth] onAuthStateChanged after error:', firebaseUser?.email);
-        setUser(firebaseUser);
-        setAuthLoading(false);
-      });
+      setUser(firebaseUser);
+      setAuthLoading(false);
     });
 
     return function () {
-      clearTimeout(fallbackTimer);
       cancelled = true;
-      if (unsub) unsub();
+      clearTimeout(fallbackTimer);
+      unsub();
     };
   }, []);
 
