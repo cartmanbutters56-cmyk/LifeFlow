@@ -395,18 +395,24 @@ const CheckIcon = () => (
 // ── Error map ──────────────────────────────────────────────────────────────────
 const friendlyError = (code) => {
   const map = {
-    'auth/invalid-email':        'Please enter a valid email address.',
-    'auth/user-not-found':       'No account found. Did you sign in with Google?',
-    'auth/wrong-password':       'Incorrect password. Try Google sign-in instead.',
-    'auth/invalid-credential':   'Invalid email or password.',
-    'auth/email-already-in-use': 'An account with this email already exists.',
-    'auth/weak-password':        'Password must be at least 6 characters.',
-    'auth/too-many-requests':    'Too many attempts. Please wait and try again.',
-    'auth/popup-closed-by-user': 'Google sign-in was cancelled.',
-    'auth/handle-taken':         'This @handle is already taken.',
-    'auth/missing-handle':       'Please enter a @handle.',
-    'auth/unauthorized-domain':  'Domain not authorized. Add it in Firebase Console.',
+    'auth/invalid-email':            'Please enter a valid email address.',
+    'auth/user-not-found':           'No account found. Did you sign in with Google?',
+    'auth/wrong-password':           'Incorrect password. Try Google sign-in instead.',
+    'auth/invalid-credential':       'Invalid email or password.',
+    'auth/email-already-in-use':     'An account with this email already exists.',
+    'auth/weak-password':            'Password must be at least 6 characters.',
+    'auth/too-many-requests':        'Too many attempts. Please wait and try again.',
+    'auth/popup-closed-by-user':     'Google sign-in was cancelled.',
+    'auth/redirect-cancelled-by-user':'Google sign-in was cancelled.',
+    'auth/handle-taken':             'This @handle is already taken.',
+    'auth/missing-handle':           'Please enter a @handle.',
+    'auth/unauthorized-domain':      'Domain not authorized. Add it in Firebase Console.',
+    'auth/operation-not-allowed':    'Google sign-in is not enabled. Enable it in Firebase Console.',
+    'auth/account-exists-with-different-credential': 'An account already exists with this email using a different sign-in method.',
+    'auth/web-context-not-ready':    'Authentication context not ready. Try again.',
+    'auth/configuration-not-found':  'Firebase Auth is not configured. Check your Firebase project.',
   };
+  if (code && !map[code]) console.error('Unhandled auth error code:', code);
   return map[code] || 'Something went wrong. Please try again.';
 };
 
@@ -483,13 +489,13 @@ function SignInScreen({ onBack, onSwitch }) {
   const handleGoogle = async () => {
     setError(''); setLoading('google');
     try { await signInWithGoogle(); }
-    catch (e) { setError(friendlyError(e.code)); setLoading(''); }
+    catch (e) { console.error('Google sign-in error:', e); setError(friendlyError(e.code)); setLoading(''); }
   };
 
   const handleLogin = async () => {
     setError(''); setLoading('login');
     try { await signInWithEmail(email, password); }
-    catch (e) { setError(friendlyError(e.code)); setLoading(''); }
+    catch (e) { console.error('Email sign-in error:', e); setError(friendlyError(e.code)); setLoading(''); }
   };
 
   const disabled = !!loading;
@@ -609,7 +615,7 @@ function CreateAccountScreen({ onBack, onSwitchToSignIn }) {
   const handleGoogle = async () => {
     setError(''); setLoading('google');
     try { await signInWithGoogle(); }
-    catch (e) { setError(friendlyError(e.code)); setLoading(''); }
+    catch (e) { console.error('Google sign-in error:', e); setError(friendlyError(e.code)); setLoading(''); }
   };
 
   const handleCreate = async () => {
@@ -793,9 +799,10 @@ export default function AuthPage() {
     getRedirectResult(auth).then(function (result) {
       setRedirectLoading(false);
       if (result) {
-        try { createUserProfile(result.user.uid, result.user.displayName || '', result.user.displayName || '', ''); } catch (_) {}
+        try { createUserProfile(result.user.uid, result.user.displayName || '', result.user.displayName || '', ''); } catch (e) { console.error('createUserProfile error:', e); }
       }
-    }).catch(function () {
+    }).catch(function (e) {
+      console.error('getRedirectResult error:', e);
       setRedirectLoading(false);
     });
   }, []);
