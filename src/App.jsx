@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from './store/useAppStore';
-import { auth, onAuthStateChanged } from './firebase/auth';
+import { auth, onAuthStateChanged, getRedirectResult } from './firebase/auth';
+import { createUserProfile } from './firebase/friends';
 
 import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
@@ -191,24 +192,38 @@ export default function App() {
 
   useEffect(() => {
     var cancelled = false;
-
-    // Fallback: stop loading after 4s if auth hangs
+    var settled = false;
     var fallbackTimer = setTimeout(function () {
-      if (cancelled) return;
+      if (cancelled || settled) return;
+      settled = true;
       setAuthLoading(false);
-    }, 4000);
+    }, 5000);
 
     var unsub = onAuthStateChanged(auth, function (firebaseUser) {
+      if (cancelled || settled) return;
+      settled = true;
       clearTimeout(fallbackTimer);
-      if (cancelled) return;
       setUser(firebaseUser);
       setAuthLoading(false);
+    });
+
+    getRedirectResult(auth).then(function (result) {
+      if (cancelled || settled) return;
+      settled = true;
+      clearTimeout(fallbackTimer);
+      if (result) {
+        setUser(result.user);
+        setAuthLoading(false);
+        createUserProfile(result.user.uid, result.user.displayName || '', result.user.displayName || '', '').catch(function () {});
+      }
+    }).catch(function () {
+      // ignore — onAuthStateChanged will handle it
     });
 
     return function () {
       cancelled = true;
       clearTimeout(fallbackTimer);
-      unsub();
+      if (unsub) unsub();
     };
   }, []);
 
