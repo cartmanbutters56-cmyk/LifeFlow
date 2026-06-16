@@ -1,7 +1,8 @@
 import {
   getAuth,
   GoogleAuthProvider,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
@@ -14,8 +15,10 @@ const auth = getAuth(app);
 const googleProvider = new GoogleAuthProvider();
 
 export function signInWithGoogle() {
-  return signInWithPopup(auth, googleProvider);
+  return signInWithRedirect(auth, googleProvider);
 }
+
+export { getRedirectResult };
 
 export function signInWithEmail(email, password) {
   return signInWithEmailAndPassword(auth, email, password);

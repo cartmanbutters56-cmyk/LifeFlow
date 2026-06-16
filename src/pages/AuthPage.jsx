@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { signInWithGoogle, signInWithEmail, signUpWithEmail } from '../firebase/auth';
+import React, { useState, useEffect } from 'react';
+import { signInWithGoogle, signInWithEmail, signUpWithEmail, getRedirectResult } from '../firebase/auth';
+import { auth } from '../firebase/auth';
 import { createUserProfile } from '../firebase/friends';
 import matchaHero from '../assets/hero-matcha.jpg';
 
@@ -786,6 +787,32 @@ function CreateAccountScreen({ onBack, onSwitchToSignIn }) {
 // ── Root ───────────────────────────────────────────────────────────────────────
 export default function AuthPage() {
   const [screen, setScreen] = useState('welcome');
+  const [redirectLoading, setRedirectLoading] = useState(true);
+
+  useEffect(function () {
+    getRedirectResult(auth).then(function (result) {
+      setRedirectLoading(false);
+      if (result) {
+        try { createUserProfile(result.user.uid, result.user.displayName || '', result.user.displayName || '', ''); } catch (_) {}
+      }
+    }).catch(function () {
+      setRedirectLoading(false);
+    });
+  }, []);
+
+  if (redirectLoading) {
+    return (
+      <div style={{
+        minHeight: '100dvh', display: 'flex',
+        alignItems: 'center', justifyContent: 'center',
+        background: 'var(--bg)',
+      }}>
+        <div style={{ fontSize: 14, color: 'var(--text-muted)', fontWeight: 600 }}>
+          Signing in...
+        </div>
+      </div>
+    );
+  }
 
   if (screen === 'welcome') {
     return (
