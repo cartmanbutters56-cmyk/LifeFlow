@@ -86,15 +86,14 @@ export function useAppStore(userId, displayName) {
   // ─── Firestore: real-time listener (replaces one-time getDoc) ───────────────
   const sessionId = useRef(null);
   const sessionWritePending = useRef(false);
-  const knownSessionIds = useRef(new Set());
   const currentProfileNameRef = useRef(profileName);
   useEffect(() => { currentProfileNameRef.current = profileName; }, [profileName]);
 
   useEffect(() => {
     if (!userId) return;
 
-    const sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
-    knownSessionIds.current.add(sid);
+    const now = Date.now();
+    const sid = 'sess_' + now + '_' + Math.random().toString(36).slice(2, 9);
     sessionId.current = sid;
     const ref = doc(db, 'users', userId);
 
@@ -117,13 +116,17 @@ export function useAppStore(userId, displayName) {
 
       // ── Session: kick duplicate logins ──────────────────────────────────────
       if (data.currentSession && data.currentSession !== sessionId.current && !sessionWritePending.current) {
-        // If this session ID was written by one of our own previous effects
-        // (e.g. React StrictMode double-mount), it's stale — ignore it
-        if (knownSessionIds.current.has(data.currentSession)) {
+        // Extract timestamp from the session ID: format = "sess_<epoch>_<random>"
+        // If the snapshot's session is OLDER than ours, it's a stale write
+        // (e.g. StrictMode double-mount or delayed server response from a previous session).
+        // Only sign out if the snapshot's session is NEWER (another tab/device).
+        var snapTs = parseInt(data.currentSession.split('_')[1], 10);
+        if (!isNaN(snapTs) && snapTs < now) {
+          // Stale / delayed write from an older session — ignore
+        } else {
+          signOut().catch(function () {});
           return;
         }
-        signOut().catch(() => {});
-        return;
       }
 
       // ── Profile name ────────────────────────────────────────────────────────

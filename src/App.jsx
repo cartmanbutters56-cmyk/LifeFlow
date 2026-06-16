@@ -209,41 +209,57 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  useEffect(() => {
+  useEffect(function () {
     var cancelled = false;
-    var loadingSettled = false;
+    var loadingDone = false;
     var fallbackTimer = setTimeout(function () {
-      if (cancelled || loadingSettled) return;
-      loadingSettled = true;
+      if (cancelled || loadingDone) return;
+      loadingDone = true;
       setAuthLoading(false);
     }, 5000);
 
     var unsub = onAuthStateChanged(auth, function (firebaseUser) {
       if (cancelled) return;
       setUser(firebaseUser);
-      if (!loadingSettled) {
-        loadingSettled = true;
+      if (!loadingDone) {
+        loadingDone = true;
         clearTimeout(fallbackTimer);
         setAuthLoading(false);
       }
     });
 
+    // Poll auth.currentUser as fallback
+    var pollTimer = setInterval(function () {
+      if (cancelled) return;
+      var cu = auth.currentUser;
+      if (cu) {
+        clearInterval(pollTimer);
+        setUser(cu);
+        if (!loadingDone) {
+          loadingDone = true;
+          clearTimeout(fallbackTimer);
+          setAuthLoading(false);
+        }
+      }
+    }, 200);
+
     getRedirectResult(auth).then(function (result) {
-      if (cancelled || loadingSettled) return;
-      loadingSettled = true;
-      clearTimeout(fallbackTimer);
-      setAuthLoading(false);
+      if (cancelled) return;
       if (result) {
         setUser(result.user);
         createUserProfile(result.user.uid, result.user.displayName || '', result.user.displayName || '', '').catch(function () {});
+        if (!loadingDone) {
+          loadingDone = true;
+          clearTimeout(fallbackTimer);
+          setAuthLoading(false);
+        }
       }
-    }).catch(function () {
-      // ignore — onAuthStateChanged handles it
-    });
+    }).catch(function () {});
 
     return function () {
       cancelled = true;
       clearTimeout(fallbackTimer);
+      clearInterval(pollTimer);
       if (unsub) unsub();
     };
   }, []);
