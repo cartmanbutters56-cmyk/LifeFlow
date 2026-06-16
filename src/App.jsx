@@ -192,32 +192,34 @@ export default function App() {
 
   useEffect(() => {
     var cancelled = false;
-    var settled = false;
+    var loadingSettled = false;
     var fallbackTimer = setTimeout(function () {
-      if (cancelled || settled) return;
-      settled = true;
+      if (cancelled || loadingSettled) return;
+      loadingSettled = true;
       setAuthLoading(false);
     }, 5000);
 
     var unsub = onAuthStateChanged(auth, function (firebaseUser) {
-      if (cancelled || settled) return;
-      settled = true;
-      clearTimeout(fallbackTimer);
+      if (cancelled) return;
       setUser(firebaseUser);
-      setAuthLoading(false);
+      if (!loadingSettled) {
+        loadingSettled = true;
+        clearTimeout(fallbackTimer);
+        setAuthLoading(false);
+      }
     });
 
     getRedirectResult(auth).then(function (result) {
-      if (cancelled || settled) return;
-      settled = true;
+      if (cancelled || loadingSettled) return;
+      loadingSettled = true;
       clearTimeout(fallbackTimer);
+      setAuthLoading(false);
       if (result) {
         setUser(result.user);
-        setAuthLoading(false);
         createUserProfile(result.user.uid, result.user.displayName || '', result.user.displayName || '', '').catch(function () {});
       }
     }).catch(function () {
-      // ignore — onAuthStateChanged will handle it
+      // ignore — onAuthStateChanged handles it
     });
 
     return function () {
