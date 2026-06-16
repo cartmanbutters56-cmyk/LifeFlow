@@ -197,24 +197,22 @@ export default function App() {
     getRedirectResult(auth).then(function (result) {
       if (cancelled) return;
       if (result) {
-        // Google sign-in redirect completed — set user directly
+        alert('Redirect found: ' + result.user.email);
         setUser(result.user);
         setAuthLoading(false);
         createUserProfile(result.user.uid, result.user.displayName || '', result.user.displayName || '', '').catch(function () {});
-        // Still listen for future auth state changes
         unsub = onAuthStateChanged(auth, function (firebaseUser) {
           setUser(firebaseUser);
         });
         return;
       }
-      // No redirect — listen for normal auth state
       unsub = onAuthStateChanged(auth, function (firebaseUser) {
         setUser(firebaseUser);
         setAuthLoading(false);
       });
-    }).catch(function () {
-      // getRedirectResult failed — fall back to normal listener
+    }).catch(function (err) {
       if (cancelled) return;
+      alert('Redirect error: ' + (err.code || err.message));
       unsub = onAuthStateChanged(auth, function (firebaseUser) {
         setUser(firebaseUser);
         setAuthLoading(false);
