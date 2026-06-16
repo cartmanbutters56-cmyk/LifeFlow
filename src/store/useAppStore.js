@@ -283,7 +283,7 @@ export function useAppStore(userId, displayName) {
     const todayMeals = meals[todayKey] || [];
     const doneM = todayMeals.filter(m => m.done).length;
     const mealPct = todayMeals.length ? Math.round((doneM / todayMeals.length) * 100) : 0;
-    const todayRs = routines.filter(r => r.days.includes(todayDayName));
+    const todayRs = routines.filter(r => r.days && r.days.includes(todayDayName));
     const doneR = todayRs.filter(r => !!routineCompletions[`${r.id}_${todayKey}`]).length;
     const routinePct = todayRs.length ? Math.round((doneR / todayRs.length) * 100) : 0;
     const curWater = waterIntake[todayKey] || 0;
@@ -312,7 +312,7 @@ export function useAppStore(userId, displayName) {
   const updateRoutine = useCallback((id, upd) => setRoutines(prev => prev.map(r => r.id === id ? { ...r, ...upd } : r)), []);
   const deleteRoutine = useCallback(id => setRoutines(prev => prev.filter(r => r.id !== id)), []);
 
-  const todayRoutines = routines.filter(r => r.days.includes(todayDayName));
+  const todayRoutines = routines.filter(r => r.days && r.days.includes(todayDayName));
   const todayRoutinesDone = todayRoutines.filter(r => isRoutineDone(r.id, todayKey)).length;
 
   // ─── Meals ───────────────────────────────────────────────────────────────────
