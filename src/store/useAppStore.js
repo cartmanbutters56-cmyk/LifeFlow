@@ -178,7 +178,7 @@ export function useAppStore(userId, displayName) {
         }
       }
     }, (err) => {
-      console.warn('Firestore listener error:', err);
+      console.warn('Firestore listener error:', err?.message);
     });
 
     return () => unsub();

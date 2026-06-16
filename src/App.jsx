@@ -149,16 +149,24 @@ const PAGES = {
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(error) { return { error }; }
-  componentDidCatch(error, info) { console.error('ErrorBoundary caught:', error, info); }
+  componentDidCatch(error, info) { console.error('ErrorBoundary caught:', error?.message); }
   render() {
     if (this.state.error) {
       return React.createElement('div', {
         style: { padding: 40, fontFamily: 'sans-serif', color: '#333' }
       },
         React.createElement('h2', {}, 'Something went wrong'),
-        React.createElement('pre', {
-          style: { background: '#f5f5f5', padding: 16, borderRadius: 8, fontSize: 13, whiteSpace: 'pre-wrap' }
-        }, this.state.error.stack || this.state.error.message)
+        React.createElement('p', {
+          style: { fontSize: 14, color: '#666', lineHeight: 1.5 }
+        }, 'An unexpected error occurred. Please try refreshing the page.'),
+        React.createElement('button', {
+          onClick: () => window.location.reload(),
+          style: {
+            marginTop: 16, padding: '10px 24px', borderRadius: 8, border: 'none',
+            background: '#10B981', color: '#fff', fontSize: 14, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'inherit',
+          }
+        }, 'Refresh Page')
       );
     }
     return this.props.children;

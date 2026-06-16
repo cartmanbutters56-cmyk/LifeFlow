@@ -88,7 +88,7 @@ export default function Messages({ uid, profileName, onClose, store, onAcceptStr
     setUploading(true);
     try {
       await sendImageMessage(chatId, uid, file);
-    } catch (e) { console.warn('Upload failed:', e); }
+    } catch (e) { console.warn('Upload failed'); }
     setUploading(false);
     setPreview(null);
   };
@@ -128,7 +128,7 @@ export default function Messages({ uid, profileName, onClose, store, onAcceptStr
         frontVideoRef.current.srcObject = stream;
       }
     } catch (e) {
-      console.warn('Front camera failed:', e);
+      console.warn('Front camera failed');
     }
   }, []);
 
@@ -242,7 +242,7 @@ export default function Messages({ uid, profileName, onClose, store, onAcceptStr
         setShowCamera(false);
         setPreview(URL.createObjectURL(blob));
         setUploading(true);
-        try { await sendImageMessage(chatId, uid, blob); } catch (e) { console.warn('Upload failed:', e); }
+        try { await sendImageMessage(chatId, uid, blob); } catch { console.warn('Upload failed'); }
         setUploading(false);
         setPreview(null);
       }, 'image/jpeg', 0.88);
@@ -256,7 +256,7 @@ export default function Messages({ uid, profileName, onClose, store, onAcceptStr
         setShowCamera(false);
         setPreview(URL.createObjectURL(blob));
         setUploading(true);
-        try { await sendImageMessage(chatId, uid, blob); } catch (e) { console.warn('Upload failed:', e); }
+        try { await sendImageMessage(chatId, uid, blob); } catch { console.warn('Upload failed'); }
         setUploading(false);
         setPreview(null);
       }, 'image/jpeg', 0.85);

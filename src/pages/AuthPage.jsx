@@ -487,13 +487,13 @@ function SignInScreen({ onBack, onSwitch }) {
   const handleGoogle = async () => {
     setError(''); setLoading('google');
     try { await signInWithGoogle(); }
-    catch (e) { console.error('Google sign-in error:', e); setError(friendlyError(e.code)); setLoading(''); }
+    catch (e) { console.error('Google sign-in error:', e?.code); setError(friendlyError(e.code)); setLoading(''); }
   };
 
   const handleLogin = async () => {
     setError(''); setLoading('login');
     try { await signInWithEmail(email, password); }
-    catch (e) { console.error('Email sign-in error:', e); setError(friendlyError(e.code)); setLoading(''); }
+    catch (e) { console.error('Email sign-in error:', e?.code); setError(friendlyError(e.code)); setLoading(''); }
   };
 
   const disabled = !!loading;
@@ -613,7 +613,7 @@ function CreateAccountScreen({ onBack, onSwitchToSignIn }) {
   const handleGoogle = async () => {
     setError(''); setLoading('google');
     try { await signInWithGoogle(); }
-    catch (e) { console.error('Google sign-in error:', e); setError(friendlyError(e.code)); setLoading(''); }
+    catch (e) { console.error('Google sign-in error:', e?.code); setError(friendlyError(e.code)); setLoading(''); }
   };
 
   const handleCreate = async () => {

@@ -29,10 +29,20 @@ export async function checkHandleAvailability(handle) {
   return !snap.exists();
 }
 
+function pickPublicFields(id, data) {
+  return {
+    id,
+    handle: data.handle || '',
+    displayName: data.displayName || '',
+    photoURL: data.photoURL || '',
+    createdAt: data.createdAt || null,
+  };
+}
+
 export async function getUserProfile(uid) {
   const ref = doc(db, "users", uid);
   const snap = await getDoc(ref);
-  return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+  return snap.exists() ? pickPublicFields(snap.id, snap.data()) : null;
 }
 
 export async function searchUsers(queryStr, currentUid) {
@@ -42,7 +52,7 @@ export async function searchUsers(queryStr, currentUid) {
   const q = query(usersRef, where("handle", ">=", clean), where("handle", "<=", clean + "\uf8ff"));
   const snap = await getDocs(q);
   return snap.docs
-    .map(d => ({ id: d.id, ...d.data() }))
+    .map(d => pickPublicFields(d.id, d.data()))
     .filter(u => u.id !== currentUid);
 }
 
@@ -125,8 +135,8 @@ export async function getFollowers(uid) {
     const usersRef = collection(db, "users");
     const q = query(usersRef, where("friends", "array-contains", uid));
     const snap = await getDocs(q);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  } catch (e) { console.warn('getFollowers error:', e); return []; }
+    return snap.docs.map(d => pickPublicFields(d.id, d.data()));
+  } catch (e) { console.warn('getFollowers error:', e?.message); return []; }
 }
 
 export async function removeFriend(currentUid, friendUid) {

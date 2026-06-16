@@ -4,4 +4,7 @@ dist/
 *.cert
 .cert/
 *.local
+.env
+.env.local
+.env.*.local
 

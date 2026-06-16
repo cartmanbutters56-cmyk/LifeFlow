@@ -620,7 +620,7 @@ function SharedCreateSheet({ open, onClose, onCreate, todayKey, friends, uid }) 
       });
       onClose();
     } catch (e) {
-      console.warn('Failed to send invite:', e);
+      console.warn('Failed to send invite');
     }
     setSending(false);
   };
@@ -885,7 +885,7 @@ export default function Streaks({ store, user }) {
             setOutgoingIds(prev => prev.filter(id => id !== toUid));
           }
           store.refreshFriends();
-        } catch (e) { console.warn(e); }
+        } catch (e) { console.warn('Friend action failed'); }
       },
     });
   };
@@ -950,7 +950,7 @@ export default function Streaks({ store, user }) {
       const prof = await getUserProfile(p.fromUid);
       if (prof) setFriends(prev => [...prev, prof]);
       store.refreshFriends();
-    } catch (e) { console.warn('acceptFriendRequest failed:', e); }
+    } catch (e) { console.warn('acceptFriendRequest failed'); }
   };
 
   const declinePending = async (id) => {

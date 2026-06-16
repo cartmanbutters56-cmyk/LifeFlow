@@ -412,7 +412,7 @@ function ShareModal({ open, onClose, event, userId, userName }) {
       await sendTextMessage(chatId, userId, msg);
       setSent(true);
       setTimeout(() => { onClose(); }, 1200);
-    } catch (e) { console.warn('Share failed', e); }
+    } catch (e) { console.warn('Share failed'); }
     setSending(false);
   };
 

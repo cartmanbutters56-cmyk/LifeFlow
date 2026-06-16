@@ -35,7 +35,7 @@ export function listenToMessages(chatId, callback) {
   return onSnapshot(q, (snap) => {
     const msgs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     callback(msgs);
-  }, (err) => console.warn("listenToMessages error:", err));
+  }, (err) => console.warn("listenToMessages error:", err?.code || err?.message));
 }
 
 export async function sendTextMessage(chatId, senderId, text) {
@@ -110,13 +110,21 @@ export async function getUserChats(uid) {
   const q = query(chatsRef, where("participants", "array-contains", uid));
   const snap = await getDocs(q);
   const chats = [];
+  function pickChatPartnerFields(id, data) {
+    return {
+      id,
+      handle: data.handle || '',
+      displayName: data.displayName || '',
+      photoURL: data.photoURL || '',
+    };
+  }
   for (const d of snap.docs) {
     const data = d.data();
     const partnerId = data.participants.find(p => p !== uid);
     const partnerSnap = await getDoc(doc(db, "users", partnerId));
     chats.push({
       chatId: d.id,
-      partner: partnerSnap.exists() ? { id: partnerSnap.id, ...partnerSnap.data() } : { id: partnerId },
+      partner: partnerSnap.exists() ? pickChatPartnerFields(partnerSnap.id, partnerSnap.data()) : { id: partnerId },
       lastMessage: data.lastMessage,
       lastTimestamp: data.lastTimestamp,
     });
