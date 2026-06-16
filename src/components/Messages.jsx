@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getUserProfile } from '../firebase/friends';
 import {
   getUserChats, ensureChatExists, listenToMessages,
@@ -23,9 +23,19 @@ export default function Messages({ uid, profileName, onClose, store, onAcceptStr
   const [viewingImage, setViewingImage] = useState(null);
   const [menuMsgId, setMenuMsgId] = useState(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [showCamera, setShowCamera] = useState(false);
+  const [facingMode, setFacingMode] = useState('environment');
+  const [dualCamera, setDualCamera] = useState(false);
+  const [pipPos, setPipPos] = useState({ x: 16, y: 16 });
   const fileInputRef = useRef(null);
   const selfieInputRef = useRef(null);
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const frontVideoRef = useRef(null);
+  const frontStreamRef = useRef(null);
   const chatEndRef = useRef(null);
+  const dragging = useRef(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
 
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
 
@@ -83,8 +93,178 @@ export default function Messages({ uid, profileName, onClose, store, onAcceptStr
     setPreview(null);
   };
 
+  const startCamera = useCallback(async (mode) => {
+    try {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: mode, width: { ideal: 1920 }, height: { ideal: 1080 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch {
+      alert('Could not access camera. Please check permissions.');
+      setShowCamera(false);
+    }
+  }, []);
+
+  const startFrontCamera = useCallback(async () => {
+    try {
+      if (frontStreamRef.current) {
+        frontStreamRef.current.getTracks().forEach(t => t.stop());
+        frontStreamRef.current = null;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 640 } },
+        audio: false,
+      });
+      frontStreamRef.current = stream;
+      if (frontVideoRef.current) {
+        frontVideoRef.current.srcObject = stream;
+      }
+    } catch (e) {
+      console.warn('Front camera failed:', e);
+    }
+  }, []);
+
+  // FIX 1: Main camera effect — lock to 'environment' when dual mode is active
+  useEffect(() => {
+    if (!showCamera) {
+      if (frontStreamRef.current) {
+        frontStreamRef.current.getTracks().forEach(t => t.stop());
+        frontStreamRef.current = null;
+      }
+      setDualCamera(false);
+      return;
+    }
+    // In dual mode the main camera is always back-facing
+    startCamera(dualCamera ? 'environment' : facingMode);
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(t => t.stop());
+        streamRef.current = null;
+      }
+      if (frontStreamRef.current) {
+        frontStreamRef.current.getTracks().forEach(t => t.stop());
+        frontStreamRef.current = null;
+      }
+    };
+  }, [showCamera, facingMode, dualCamera, startCamera]);
+
+  // FIX 2: Dual camera toggle — restart main as back, start front separately
+  useEffect(() => {
+    if (!showCamera) return;
+    if (dualCamera) {
+      // Force main camera to back, then open front in PiP
+      startCamera('environment');
+      startFrontCamera();
+    } else {
+      // Stop front stream and restore main to current facingMode
+      if (frontStreamRef.current) {
+        frontStreamRef.current.getTracks().forEach(t => t.stop());
+        frontStreamRef.current = null;
+      }
+      startCamera(facingMode);
+    }
+  }, [dualCamera, showCamera, startFrontCamera, startCamera, facingMode]);
+
+  const toggleCamera = () => {
+    setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
+
+  const capturePhoto = () => {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth) return;
+
+    if (dualCamera && frontVideoRef.current && frontVideoRef.current.videoWidth) {
+      // Composite both cameras into one image
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+
+      // Draw main camera
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Draw PiP (front camera) top-right, ~30% width
+      const pipW = Math.round(canvas.width * 0.3);
+      const pipH = Math.round(pipW * (frontVideoRef.current.videoHeight / frontVideoRef.current.videoWidth));
+      const pipX = canvas.width - pipW - 20;
+      const pipY = 20;
+
+      // Clip to rounded rect
+      const r = 16;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(pipX + r, pipY);
+      ctx.lineTo(pipX + pipW - r, pipY);
+      ctx.quadraticCurveTo(pipX + pipW, pipY, pipX + pipW, pipY + r);
+      ctx.lineTo(pipX + pipW, pipY + pipH - r);
+      ctx.quadraticCurveTo(pipX + pipW, pipY + pipH, pipX + pipW - r, pipY + pipH);
+      ctx.lineTo(pipX + r, pipY + pipH);
+      ctx.quadraticCurveTo(pipX, pipY + pipH, pipX, pipY + pipH - r);
+      ctx.lineTo(pipX, pipY + r);
+      ctx.quadraticCurveTo(pipX, pipY, pipX + r, pipY);
+      ctx.closePath();
+      ctx.clip();
+
+      // Flip front camera horizontally (mirror)
+      ctx.translate(pipX + pipW, pipY);
+      ctx.scale(-1, 1);
+      ctx.drawImage(frontVideoRef.current, 0, 0, pipW, pipH);
+      ctx.restore();
+
+      // Border around PiP
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = Math.max(3, Math.round(canvas.width * 0.004));
+      ctx.beginPath();
+      ctx.moveTo(pipX + r, pipY);
+      ctx.lineTo(pipX + pipW - r, pipY);
+      ctx.quadraticCurveTo(pipX + pipW, pipY, pipX + pipW, pipY + r);
+      ctx.lineTo(pipX + pipW, pipY + pipH - r);
+      ctx.quadraticCurveTo(pipX + pipW, pipY + pipH, pipX + pipW - r, pipY + pipH);
+      ctx.lineTo(pipX + r, pipY + pipH);
+      ctx.quadraticCurveTo(pipX, pipY + pipH, pipX, pipY + pipH - r);
+      ctx.lineTo(pipX, pipY + r);
+      ctx.quadraticCurveTo(pipX, pipY, pipX + r, pipY);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.restore();
+
+      canvas.toBlob(async (blob) => {
+        if (!blob || !chatId) return;
+        setShowCamera(false);
+        setPreview(URL.createObjectURL(blob));
+        setUploading(true);
+        try { await sendImageMessage(chatId, uid, blob); } catch (e) { console.warn('Upload failed:', e); }
+        setUploading(false);
+        setPreview(null);
+      }, 'image/jpeg', 0.88);
+    } else {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      canvas.getContext('2d').drawImage(video, 0, 0);
+      canvas.toBlob(async (blob) => {
+        if (!blob || !chatId) return;
+        setShowCamera(false);
+        setPreview(URL.createObjectURL(blob));
+        setUploading(true);
+        try { await sendImageMessage(chatId, uid, blob); } catch (e) { console.warn('Upload failed:', e); }
+        setUploading(false);
+        setPreview(null);
+      }, 'image/jpeg', 0.85);
+    }
+  };
+
   const handleSelfie = () => {
-    selfieInputRef.current?.click();
+    setShowCamera(true);
   };
 
   const handleGallery = () => {
@@ -182,14 +362,14 @@ export default function Messages({ uid, profileName, onClose, store, onAcceptStr
                     border: '1px solid var(--border)',
                   }}>
                     <div style={{ fontSize: 32, marginBottom: 8 }}>🎉</div>
-                    <p style={{ fontSize: 15, fontWeight: 700, color: '#1CE3A0', margin: 0 }}>Streak Accepted!</p>
+                    <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--accent)', margin: 0 }}>Streak Accepted!</p>
                     {m.title && <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>"{m.title}"</p>}
                   </div>
                 ) : (
                   <div style={{
-                    background: 'linear-gradient(135deg, #1CE3A008, #1CE3A018)',
+                    background: 'linear-gradient(135deg, var(--accent)08, var(--accent)18)',
                     borderRadius: 20, padding: 20,
-                    border: '1.5px solid #1CE3A040',
+                    border: '1.5px solid var(--accent)40',
                     boxShadow: '0 4px 24px rgba(28,227,160,0.08)',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
@@ -241,14 +421,14 @@ export default function Messages({ uid, profileName, onClose, store, onAcceptStr
                         }}
                         style={{
                           width: '100%', padding: '12px', borderRadius: 12, border: 'none',
-                          background: '#1CE3A0', color: '#0A5C3E', fontSize: 14, fontWeight: 700,
+                          background: 'var(--accent)', color: 'var(--text-on-brand)', fontSize: 14, fontWeight: 700,
                           cursor: 'pointer', fontFamily: 'inherit',
                         }}
                       >Accept Challenge</button>
                     )}
                   </div>
                 )}
-              </div> 
+              </div>
             ) : m.type === 'image' ? (
               <img
                 src={m.imageUrl}
@@ -262,8 +442,8 @@ export default function Messages({ uid, profileName, onClose, store, onAcceptStr
             ) : (
               <div style={{
                 maxWidth: '75%', padding: '10px 14px', borderRadius: 16,
-                background: isMe(m.senderId) ? '#1CE3A0' : '#e5e5ea',
-                color: isMe(m.senderId) ? '#0A5C3E' : 'var(--text)',
+                background: isMe(m.senderId) ? 'var(--accent)' : 'var(--surface-secondary)',
+                color: isMe(m.senderId) ? 'var(--text-on-brand)' : 'var(--text)',
                 fontSize: 14, lineHeight: 1.4,
               }}>
                 {m.text}
@@ -341,7 +521,7 @@ export default function Messages({ uid, profileName, onClose, store, onAcceptStr
           {!uploading && (
             <>
               <button onClick={() => { setPreview(null); }} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: 'var(--text-muted)', fontFamily: 'inherit' }}>Cancel</button>
-              <button onClick={async () => { setUploading(true); try { const file = await fetch(preview).then(r => r.blob()); await sendImageMessage(chatId, uid, file); } catch {} setUploading(false); setPreview(null); }} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#1CE3A0', color: '#0A5C3E', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Send</button>
+              <button onClick={async () => { setUploading(true); try { const file = await fetch(preview).then(r => r.blob()); await sendImageMessage(chatId, uid, file); } catch {} setUploading(false); setPreview(null); }} style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'var(--text-on-brand)', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>Send</button>
             </>
           )}
         </div>
@@ -355,7 +535,7 @@ export default function Messages({ uid, profileName, onClose, store, onAcceptStr
             <div style={{ display: 'flex', gap: 16 }}>
               <button onClick={handleSelfie} style={{ flex: 1, padding: 16, borderRadius: 14, background: 'var(--surface-alt)', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center' }}>
                 <div style={{ fontSize: 28, marginBottom: 6 }}>📷</div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Take a Selfie</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>Take a Photo</div>
               </button>
               <button onClick={handleGallery} style={{ flex: 1, padding: 16, borderRadius: 14, background: 'var(--surface-alt)', border: 'none', cursor: 'pointer', fontFamily: 'inherit', textAlign: 'center' }}>
                 <div style={{ fontSize: 28, marginBottom: 6 }}>🖼️</div>
@@ -396,12 +576,12 @@ export default function Messages({ uid, profileName, onClose, store, onAcceptStr
           />
         </div>
         <button onClick={handleSend} disabled={!input.trim()} style={{
-          background: input.trim() ? '#1CE3A0' : 'var(--surface-alt)',
+          background: input.trim() ? 'var(--accent)' : 'var(--surface-alt)',
           border: 'none', borderRadius: 10, padding: '8px 10px', cursor: input.trim() ? 'pointer' : 'default',
           display: 'flex', alignItems: 'center', flexShrink: 0,
         }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill={input.trim() ? '#0A5C3E' : 'var(--text-muted)'} stroke="none">
-            <path d="M22 2L11 13" stroke={input.trim() ? '#0A5C3E' : 'var(--text-muted)'} strokeWidth="2" strokeLinecap="round" /><path d="M22 2L15 22l-4-9-9-4z" />
+          <svg width="18" height="18" viewBox="0 0 24 24" fill={input.trim() ? 'var(--text-on-brand)' : 'var(--text-muted)'} stroke="none">
+            <path d="M22 2L11 13" stroke={input.trim() ? 'var(--text-on-brand)' : 'var(--text-muted)'} strokeWidth="2" strokeLinecap="round" /><path d="M22 2L15 22l-4-9-9-4z" />
           </svg>
         </button>
       </div>
@@ -409,6 +589,148 @@ export default function Messages({ uid, profileName, onClose, store, onAcceptStr
       {/* Hidden file inputs */}
       <input ref={selfieInputRef} type="file" accept="image/*" capture="user" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelected(f); e.target.value = ''; }} />
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={e => { const f = e.target.files?.[0]; if (f) handleFileSelected(f); e.target.value = ''; }} />
+
+      {/* Camera screen */}
+      {showCamera && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 30,
+          background: '#000',
+          display: 'flex', flexDirection: 'column',
+        }}>
+          {/* Main camera — objectFit: contain fixes the zoom/crop */}
+          <video
+            ref={videoRef}
+            autoPlay playsInline
+            style={{
+              position: 'absolute', inset: 0,
+              width: '100%', height: '100%',
+              objectFit: 'contain',
+              background: '#000',
+            }}
+          />
+
+          {/* Draggable PiP — front camera */}
+          {dualCamera && (
+            <div
+              style={{
+                position: 'absolute',
+                top: pipPos.y,
+                left: pipPos.x,
+                width: 110, height: 150,
+                borderRadius: 16,
+                overflow: 'hidden',
+                border: '2px solid rgba(255,255,255,0.75)',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                zIndex: 35,
+                cursor: 'grab',
+                touchAction: 'none',
+              }}
+              onPointerDown={e => {
+                dragging.current = true;
+                dragOffset.current = { x: e.clientX - pipPos.x, y: e.clientY - pipPos.y };
+                e.currentTarget.setPointerCapture(e.pointerId);
+              }}
+              onPointerMove={e => {
+                if (!dragging.current) return;
+                setPipPos({ x: e.clientX - dragOffset.current.x, y: e.clientY - dragOffset.current.y });
+              }}
+              onPointerUp={() => { dragging.current = false; }}
+            >
+              <video
+                ref={frontVideoRef}
+                autoPlay playsInline
+                style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
+              />
+            </div>
+          )}
+
+          {/* Top bar */}
+          <div style={{
+            position: 'absolute', top: 0, left: 0, right: 0,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            padding: '14px 16px',
+            background: 'linear-gradient(180deg, rgba(0,0,0,0.55) 0%, transparent 100%)',
+            zIndex: 36,
+          }}>
+            {/* Close */}
+            <button
+              onClick={() => setShowCamera(false)}
+              style={{
+                background: 'rgba(255,255,255,0.2)', border: 'none',
+                width: 36, height: 36, borderRadius: '50%',
+                cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backdropFilter: 'blur(4px)',
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M18 6L6 18" /><path d="M6 6l12 12" />
+              </svg>
+            </button>
+
+            <div style={{ display: 'flex', gap: 10 }}>
+              {/* Dual camera toggle */}
+              <button
+                onClick={() => setDualCamera(d => !d)}
+                title="Dual camera"
+                style={{
+                  background: dualCamera ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.2)',
+                  border: 'none', width: 36, height: 36, borderRadius: '50%',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  backdropFilter: 'blur(4px)',
+                }}
+              >
+                {/* PiP icon */}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={dualCamera ? '#000' : 'white'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="5" width="20" height="14" rx="2"/>
+                  <rect x="13" y="10" width="7" height="5" rx="1" fill={dualCamera ? '#000' : 'white'} stroke={dualCamera ? '#000' : 'white'} strokeWidth="1"/>
+                </svg>
+              </button>
+
+              {/* FIX 3: Flip camera — disabled in dual mode */}
+              <button
+                onClick={toggleCamera}
+                disabled={dualCamera}
+                title={dualCamera ? 'Flip disabled in dual mode' : 'Flip camera'}
+                style={{
+                  background: 'rgba(255,255,255,0.2)', border: 'none',
+                  width: 36, height: 36, borderRadius: '50%',
+                  cursor: dualCamera ? 'not-allowed' : 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  backdropFilter: 'blur(4px)',
+                  opacity: dualCamera ? 0.4 : 1,
+                  transition: 'opacity 0.2s',
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 4v6h6"/><path d="M23 20v-6h-6"/>
+                  <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Bottom capture bar */}
+          <div style={{
+            position: 'absolute', bottom: 0, left: 0, right: 0,
+            display: 'flex', justifyContent: 'center',
+            padding: '24px 0 40px',
+            background: 'linear-gradient(0deg, rgba(0,0,0,0.55) 0%, transparent 100%)',
+            zIndex: 36,
+          }}>
+            <button
+              onClick={capturePhoto}
+              style={{
+                width: 72, height: 72, borderRadius: '50%',
+                border: '4px solid rgba(255,255,255,0.8)',
+                background: 'transparent', cursor: 'pointer', padding: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <div style={{ width: 58, height: 58, borderRadius: '50%', background: 'white' }} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 

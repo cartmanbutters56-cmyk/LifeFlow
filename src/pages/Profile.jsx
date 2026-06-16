@@ -28,7 +28,7 @@ const THEME_OPTIONS = [
 ];
 
 export default function Profile({ store, user, onMessageUser }) {
-  const { effectiveTheme, themeMode, setTheme, getDataForStats, setWaterGoal, setCalorieGoal, waterGoal, calorieGoal, calcStreak, completionHistory, waterUnit, setWaterUnit, profileName, setProfileName, friendsRefreshKey } = store;
+  const { effectiveTheme, themeMode, setTheme, getDataForStats, setWaterGoal, waterGoal, calcStreak, completionHistory, waterUnit, setWaterUnit, profileName, setProfileName, friendsRefreshKey } = store;
   const firebasePhoto = user?.photoURL || '';
   const uid = user?.uid || '';
 
@@ -36,9 +36,7 @@ export default function Profile({ store, user, onMessageUser }) {
   const [editName, setEditName] = useState(false);
   const [nameInput, setNameInput] = useState(name);
   const [showWaterGoal, setShowWaterGoal] = useState(false);
-  const [showCalGoal, setShowCalGoal] = useState(false);
   const wgRef = useRef(null);
-  const cgRef = useRef(null);
   const [mounted, setMounted] = useState(false);
 
   const [profile, setProfile] = useState(null);
@@ -83,7 +81,7 @@ export default function Profile({ store, user, onMessageUser }) {
   useEffect(() => { if (!editName) setName(profileName); }, [profileName]);
   useEffect(() => { const t = setTimeout(() => setMounted(true), 80); return () => clearTimeout(t); }, []);
 
-  const anyOverlayOpen = showStreakHistory || showFollowList || showWaterGoal || showCalGoal || showProfileSettings || viewingProfile;
+  const anyOverlayOpen = showStreakHistory || showFollowList || showWaterGoal || showProfileSettings || viewingProfile;
   useEffect(() => {
     const el = document.getElementById('app-content-scroll');
     if (!el) return;
@@ -268,8 +266,8 @@ export default function Profile({ store, user, onMessageUser }) {
       <div style={{
         position: 'relative', overflow: 'hidden',
         background: isDark
-          ? 'linear-gradient(160deg, #2D1F6E 0%, #1A1A2E 100%)'
-          : 'linear-gradient(160deg, #6C5CE7 0%, #8B82F0 100%)',
+          ? 'linear-gradient(160deg, #2D3D2D 0%, #1B1D21 100%)'
+          : 'linear-gradient(160deg, #7DB57D 0%, #A8D5BA 100%)',
         padding: '52px 20px 28px',
         animation: mounted ? 'heroEnter 0.5s ease both' : 'none',
       }}>
@@ -341,9 +339,9 @@ export default function Profile({ store, user, onMessageUser }) {
       <div style={{ padding: '16px 16px 0', ...fade(0.05) }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
           {[
-            { label: 'Days Active', value: daysSince, color: '#6C5CE7', bg: isDark ? 'rgba(108,92,231,0.15)' : 'rgba(108,92,231,0.08)' },
-            { label: 'Avg Score', value: `${Math.round(yearlyScore)}%`, color: '#00C896', bg: isDark ? 'rgba(0,200,150,0.12)' : 'rgba(0,200,150,0.08)' },
-            { label: 'Best Streak', value: `${bestStreak}d`, color: '#F5A623', bg: isDark ? 'rgba(245,166,35,0.15)' : 'rgba(245,166,35,0.08)' },
+            { label: 'Days Active', value: daysSince, color: 'var(--accent)', bg: isDark ? 'var(--accent-soft)' : 'var(--accent-soft)' },
+            { label: 'Avg Score', value: `${Math.round(yearlyScore)}%`, color: 'var(--accent)', bg: isDark ? 'var(--accent-soft)' : 'var(--accent-soft)' },
+            { label: 'Best Streak', value: `${bestStreak}d`, color: 'var(--amber)', bg: isDark ? 'var(--amber-soft)' : 'var(--amber-soft)' },
           ].map(s => (
             <div key={s.label} style={{
               background: s.bg, borderRadius: 16, padding: '14px 8px',
@@ -403,7 +401,7 @@ export default function Profile({ store, user, onMessageUser }) {
           <div style={{
             background: isDark
               ? 'linear-gradient(160deg, #2D1F6E 0%, #1A1A2E 100%)'
-              : 'linear-gradient(160deg, #6C5CE7 0%, #8B82F0 100%)',
+              : 'linear-gradient(160deg, var(--accent) 0%, var(--accent2) 100%)',
             padding: '48px 16px 24px', position: 'relative', overflow: 'hidden',
           }}>
             <div style={{ position: 'absolute', top: -40, right: -30, width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
@@ -433,13 +431,13 @@ export default function Profile({ store, user, onMessageUser }) {
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 16 }}>
                 <div style={{ background: 'rgba(0,200,150,0.25)', borderRadius: 20, padding: '5px 14px', display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span style={{ fontSize: 12 }}>✓</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#00C896' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>
                     {streakHistory.filter(s => s.status === 'completed').length} completed
                   </span>
                 </div>
-                <div style={{ background: 'rgba(255,59,48,0.25)', borderRadius: 20, padding: '5px 14px', display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ background: 'var(--coral-soft)', borderRadius: 20, padding: '5px 14px', display: 'flex', alignItems: 'center', gap: 5 }}>
                   <span style={{ fontSize: 12 }}>✕</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: '#FF6B6B' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--coral)' }}>
                     {streakHistory.filter(s => s.status === 'abandoned').length} dropped
                   </span>
                 </div>
@@ -474,10 +472,10 @@ export default function Profile({ store, user, onMessageUser }) {
                     <div key={s.id} style={{
                       borderRadius: 20, overflow: 'hidden',
                       border: `1px solid ${isCompleted
-                        ? (isDark ? 'rgba(0,200,150,0.2)' : 'rgba(0,200,150,0.18)')
-                        : (isDark ? 'rgba(255,59,48,0.2)' : 'rgba(255,59,48,0.15)')}`,
+                        ? (isDark ? 'rgba(0,200,150,0.2)' : 'var(--accent-soft)')
+                        : (isDark ? 'var(--coral-soft)' : 'var(--coral-soft)')}`,
                       background: isCompleted
-                        ? (isDark ? 'linear-gradient(135deg, rgba(0,200,150,0.08) 0%, rgba(0,200,150,0.02) 100%)' : 'linear-gradient(135deg, rgba(0,200,150,0.06) 0%, rgba(0,200,150,0.01) 100%)')
+                        ? (isDark ? 'linear-gradient(135deg, var(--accent-soft) 0%, rgba(0,200,150,0.02) 100%)' : 'linear-gradient(135deg, rgba(0,200,150,0.06) 0%, rgba(0,200,150,0.01) 100%)')
                         : (isDark ? 'linear-gradient(135deg, rgba(255,59,48,0.07) 0%, rgba(255,59,48,0.02) 100%)' : 'linear-gradient(135deg, rgba(255,59,48,0.05) 0%, rgba(255,59,48,0.01) 100%)'),
                     }}>
                       {/* top row */}
@@ -485,7 +483,7 @@ export default function Profile({ store, user, onMessageUser }) {
                         <div style={{
                           width: 48, height: 48, borderRadius: 16, flexShrink: 0,
                           background: isCompleted
-                            ? (isDark ? 'rgba(0,200,150,0.18)' : 'rgba(0,200,150,0.12)')
+                            ? (isDark ? 'var(--accent-soft)' : 'var(--accent-soft)')
                             : (isDark ? 'rgba(255,59,48,0.18)' : 'rgba(255,59,48,0.1)'),
                           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
                         }}>
@@ -497,9 +495,9 @@ export default function Profile({ store, user, onMessageUser }) {
                           </div>
                           <span style={{
                             fontSize: 10, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase',
-                            color: isCompleted ? '#00C896' : '#FF3B30',
+                            color: isCompleted ? 'var(--accent)' : 'var(--coral)',
                             background: isCompleted
-                              ? (isDark ? 'rgba(0,200,150,0.18)' : 'rgba(0,200,150,0.12)')
+                              ? (isDark ? 'var(--accent-soft)' : 'var(--accent-soft)')
                               : (isDark ? 'rgba(255,59,48,0.18)' : 'rgba(255,59,48,0.1)'),
                             borderRadius: 6, padding: '3px 8px',
                           }}>
@@ -511,7 +509,7 @@ export default function Profile({ store, user, onMessageUser }) {
                           style={{
                             width: 32, height: 32, borderRadius: 10, border: 'none',
                             background: isDark ? 'rgba(255,59,48,0.12)' : 'rgba(255,59,48,0.08)',
-                            color: '#FF3B30', fontSize: 13, cursor: 'pointer',
+                            color: 'var(--coral)', fontSize: 13, cursor: 'pointer',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             flexShrink: 0, fontWeight: 700, fontFamily: 'inherit',
                           }}
@@ -573,9 +571,9 @@ export default function Profile({ store, user, onMessageUser }) {
               {THEME_OPTIONS.map(opt => (
                 <button key={opt.value} onClick={() => setTheme(opt.value)} style={{
                   padding: '7px 12px', borderRadius: 10, cursor: 'pointer', fontFamily: 'inherit',
-                  border: `1.5px solid ${themeMode === opt.value ? '#6C5CE7' : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
-                  background: themeMode === opt.value ? (isDark ? 'rgba(108,92,231,0.2)' : 'rgba(108,92,231,0.08)') : 'transparent',
-                  color: themeMode === opt.value ? '#6C5CE7' : 'var(--text-muted)',
+                  border: `1.5px solid ${themeMode === opt.value ? 'var(--accent)' : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
+                  background: themeMode === opt.value ? (isDark ? 'rgba(108,92,231,0.2)' : 'var(--accent-soft)') : 'transparent',
+                  color: themeMode === opt.value ? 'var(--accent)' : 'var(--text-muted)',
                   fontWeight: 700, fontSize: 13, transition: 'all 0.2s',
                 }}>{opt.icon} {opt.label}</button>
               ))}
@@ -589,13 +587,6 @@ export default function Profile({ store, user, onMessageUser }) {
             onEdit={() => setShowWaterGoal(true)}
             borderBottom
           />
-          <SettingRow
-            icon="🍽️"
-            label="Calorie goal"
-            sub={`${calorieGoal} kcal / day`}
-            onEdit={() => setShowCalGoal(true)}
-            borderBottom
-          />
           
         </div>
       </div>
@@ -606,7 +597,7 @@ export default function Profile({ store, user, onMessageUser }) {
           width: '100%', padding: '14px 0', borderRadius: 14,
           border: '1px solid rgba(255,59,48,0.3)',
           background: isDark ? 'rgba(255,59,48,0.08)' : 'rgba(255,59,48,0.04)',
-          color: '#FF3B30', fontSize: 14, fontWeight: 700,
+          color: 'var(--coral)', fontSize: 14, fontWeight: 700,
           cursor: 'pointer', fontFamily: 'inherit', letterSpacing: '0.02em',
           transition: 'opacity 0.15s',
         }}>
@@ -653,7 +644,7 @@ export default function Profile({ store, user, onMessageUser }) {
                 flex: 1, padding: '12px 0', background: 'none', border: 'none', cursor: 'pointer',
                 fontSize: 13, fontWeight: 700, letterSpacing: '0.03em', fontFamily: 'inherit',
                 color: followTab === tab.key ? 'var(--text)' : 'var(--text-muted)',
-                borderBottom: `2px solid ${followTab === tab.key ? '#6C5CE7' : 'transparent'}`,
+                borderBottom: `2px solid ${followTab === tab.key ? 'var(--accent)' : 'transparent'}`,
                 transition: 'all 0.15s',
               }}>
                 {tab.label} {tab.count}
@@ -690,7 +681,7 @@ export default function Profile({ store, user, onMessageUser }) {
                     width: 44, height: 44, borderRadius: '50%', flexShrink: 0,
                     background: isDark ? 'rgba(108,92,231,0.2)' : 'rgba(108,92,231,0.1)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 15, fontWeight: 700, color: '#6C5CE7', overflow: 'hidden',
+                    fontSize: 15, fontWeight: 700, color: 'var(--accent)', overflow: 'hidden',
                   }}>
                     {f.photoURL
                       ? <img src={f.photoURL} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} referrerPolicy="no-referrer" />
@@ -705,8 +696,8 @@ export default function Profile({ store, user, onMessageUser }) {
                     <button
                       onClick={e => { e.stopPropagation(); onMessageUser(f); }}
                       style={{
-                        fontSize: 12, fontWeight: 700, color: '#6C5CE7',
-                        background: isDark ? 'rgba(108,92,231,0.15)' : 'rgba(108,92,231,0.08)',
+                        fontSize: 12, fontWeight: 700, color: 'var(--accent)',
+                        background: isDark ? 'var(--accent-soft)' : 'var(--accent-soft)',
                         border: '1px solid rgba(108,92,231,0.2)',
                         borderRadius: 10, padding: '6px 14px', cursor: 'pointer',
                         fontFamily: 'inherit', flexShrink: 0,
@@ -743,7 +734,7 @@ export default function Profile({ store, user, onMessageUser }) {
                   width: 64, height: 64, borderRadius: '50%', margin: '0 auto 12px',
                   background: isDark ? 'rgba(108,92,231,0.2)' : 'rgba(108,92,231,0.1)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 24, fontWeight: 700, color: '#6C5CE7', overflow: 'hidden',
+                  fontSize: 24, fontWeight: 700, color: 'var(--accent)', overflow: 'hidden',
                 }}>
                   {viewingProfile.photoURL
                     ? <img src={viewingProfile.photoURL} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} referrerPolicy="no-referrer" />
@@ -790,7 +781,7 @@ export default function Profile({ store, user, onMessageUser }) {
             onClick={handleSaveProfileSettings}
             style={{
               width: '100%', padding: '14px 0', borderRadius: 14, border: 'none',
-              background: '#6C5CE7', color: '#fff', fontSize: 15, fontWeight: 700,
+              background: 'var(--accent)', color: '#fff', fontSize: 15, fontWeight: 700,
               cursor: 'pointer', fontFamily: 'inherit',
             }}
           >Save Profile</button>
@@ -807,9 +798,9 @@ export default function Profile({ store, user, onMessageUser }) {
             {['oz', 'cups', 'ml'].map(u => (
               <button key={u} onClick={() => setWaterUnit(u)} style={{
                 flex: 1, padding: '11px', borderRadius: 12, cursor: 'pointer',
-                border: `1.5px solid ${waterUnit === u ? '#6C5CE7' : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
-                background: waterUnit === u ? (isDark ? 'rgba(108,92,231,0.2)' : 'rgba(108,92,231,0.08)') : 'transparent',
-                color: waterUnit === u ? '#6C5CE7' : 'var(--text)', fontWeight: 700, fontSize: 13,
+                border: `1.5px solid ${waterUnit === u ? 'var(--accent)' : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')}`,
+                background: waterUnit === u ? (isDark ? 'rgba(108,92,231,0.2)' : 'var(--accent-soft)') : 'transparent',
+                color: waterUnit === u ? 'var(--accent)' : 'var(--text)', fontWeight: 700, fontSize: 13,
                 fontFamily: 'inherit', transition: 'all 0.2s',
               }}>{u === 'cups' ? '🥤 Cups' : u === 'ml' ? '🧪 ml' : '💧 Oz'}</button>
             ))}
@@ -837,33 +828,8 @@ export default function Profile({ store, user, onMessageUser }) {
               }
               setShowWaterGoal(false);
             }}
-            style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', background: '#6C5CE7', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', background: 'var(--accent)', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
           >Save Settings</button>
-        </ModalShell>
-      )}
-
-      {/* ── CALORIE GOAL MODAL ────────────────────────────────────── */}
-      {showCalGoal && (
-        <ModalShell onClose={() => setShowCalGoal(false)}>
-          <h3 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', margin: '0 0 12px', fontFamily: "'Outfit', sans-serif" }}>Calorie Goal</h3>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 18px', lineHeight: 1.4 }}>
-            Enter your daily calorie target
-          </p>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 16 }}>
-            <input ref={cgRef}
-              style={{ ...inputStyle, flex: 1, fontSize: 18, fontWeight: 700, padding: '14px 16px', borderRadius: 14 }}
-              inputMode="numeric" pattern="[0-9]*"
-              placeholder="e.g. 2000"
-              defaultValue={calorieGoal}
-            />
-            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>
-              kcal
-            </span>
-          </div>
-          <button
-            onClick={() => { if (!cgRef.current) return; const g = parseFloat(cgRef.current.value); if (g > 0) setCalorieGoal(g); setShowCalGoal(false); }}
-            style={{ width: '100%', padding: '14px 0', borderRadius: 14, border: 'none', background: '#00C896', color: '#fff', fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
-          >Save Goal</button>
         </ModalShell>
       )}
 

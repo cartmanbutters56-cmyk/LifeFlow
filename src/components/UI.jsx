@@ -239,7 +239,7 @@ export function Modal({ open, onClose, title, children }) {
           borderBottom: 'none',
           padding: '24px 24px 48px',
           animation: 'slideUp 0.32s cubic-bezier(0.34,1.56,0.64,1)',
-          boxShadow: '0 -12px 64px rgba(0,0,0,0.2)',
+          boxShadow: '0 -12px 64px var(--shadow-color, rgba(0,0,0,0.15))',
         }}
       >
         <div style={{ width: 44, height: 5, background: 'var(--border)', borderRadius: 99, margin: '0 auto 22px' }} />

@@ -16,10 +16,10 @@ function BigBottle({ pct, animated, isDark }) {
   const fillH = (pct / 100) * bodyH;
   const animFillH = animated ? (animated / 100) * bodyH : fillH;
 
-  const glass = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(148,163,184,0.15)';
-  const glassHi = isDark ? 'rgba(255,255,255,0.15)' : 'rgba(148,163,184,0.25)';
-  const border = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(148,163,184,0.35)';
-  const cap = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(148,163,184,0.30)';
+  const glass = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(176,168,158,0.15)';
+  const glassHi = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(176,168,158,0.25)';
+  const border = isDark ? 'rgba(255,255,255,0.22)' : 'rgba(176,168,158,0.35)';
+  const cap = isDark ? 'rgba(255,255,255,0.10)' : 'rgba(176,168,158,0.30)';
 
   return (
     <svg width={bW + 20} height={bH + 20} viewBox={`-10 -10 ${bW + 30} ${bH + 30}`} style={{ display: 'block', filter: 'drop-shadow(0 8px 32px var(--water-soft))' }}>
@@ -189,11 +189,13 @@ function ozToDisplay(oz, unit) {
   return oz;
 }
 
-export default function WaterTracker({ store, user, setActiveTab }) {
+export default function WaterTracker({ store, user, setActiveTab, hideNav }) {
   const {
     todayWater, waterGoal, setWaterGoal, addWater, resetWater, effectiveTheme,
     waterUnit, waterIntake,
   } = store;
+
+  useEffect(() => { if (hideNav) hideNav(true); return () => { if (hideNav) hideNav(false); }; }, []);
 
   const goalRef = useRef(null);
   const [showGoalModal, setShowGoalModal] = useState(false);
@@ -330,7 +332,7 @@ export default function WaterTracker({ store, user, setActiveTab }) {
         <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{
             position: 'absolute', inset: 0,
-            background: 'radial-gradient(circle at 50% 50%, rgba(6,182,212,0.15), transparent)',
+            background: 'radial-gradient(circle at 50% 50%, var(--water-soft), transparent)',
             animation: 'fadeIn 0.6s',
           }} />
           {Array.from({ length: 24 }).map((_, i) => (
@@ -358,7 +360,7 @@ export default function WaterTracker({ store, user, setActiveTab }) {
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '0 0 14px' }}>
-        <button onClick={() => setActiveTab('gym')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center' }}>
+        <button onClick={() => setActiveTab('dashboard')} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center' }}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--text)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5" /><path d="M12 19l-7-7 7-7" />
           </svg>

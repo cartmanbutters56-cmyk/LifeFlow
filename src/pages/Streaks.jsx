@@ -16,11 +16,10 @@ const MILESTONES = [7, 14, 30, 60, 100];
 const DURATION_OPTS = [3, 7, 14, 21, 30, 60, 90];
 
 const CATEGORIES = [
-  { id: 'water',       label: 'Water',       icon: '💧', color: '#17A8D1' },
-  { id: 'nutrition',   label: 'Nutrition',   icon: '🍎', color: '#3DB87A' },
-  { id: 'fitness',     label: 'Fitness',     icon: '🏃', color: '#F5A623' },
-  { id: 'mindfulness', label: 'Mindfulness', icon: '🧘', color: '#9B59B6' },
-  { id: 'lifestyle',   label: 'Lifestyle',   icon: '⭐', color: '#E74C6F' },
+  { id: 'water',       label: 'Water',       icon: '💧', color: 'var(--water)' },
+  { id: 'nutrition',   label: 'Nutrition',   icon: '🍎', color: 'var(--green)' },
+  { id: 'mindfulness', label: 'Mindfulness', icon: '🧘', color: 'var(--purple)' },
+  { id: 'lifestyle',   label: 'Lifestyle',   icon: '⭐', color: 'var(--pink)' },
 ];
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
@@ -77,8 +76,8 @@ const theme = {
   text: 'var(--text)',
   textSub: 'var(--text-sub)',
   textMuted: 'var(--text-muted)',
-  accent: '#1CE3A0',
-  accentText: '#0A5C3E',
+  accent: 'var(--accent)',
+  accentText: 'var(--text-on-brand)',
 };
 
 const cssVars = `
@@ -166,8 +165,8 @@ const S = {
   btn: (primary) => ({
     flex: 1, padding: '9px 0', borderRadius: 8,
     border: primary ? 'none' : '1.5px solid var(--border)',
-    background: primary ? '#1CE3A0' : 'var(--surface)',
-    color: primary ? '#0A5C3E' : 'var(--text-sub)',
+    background: primary ? 'var(--accent)' : 'var(--surface)',
+    color: primary ? 'var(--text-on-brand)' : 'var(--text-sub)',
     fontSize: 12, fontWeight: 700, cursor: 'pointer',
     fontFamily: 'inherit', letterSpacing: '0.03em', textTransform: 'uppercase',
   }),
@@ -252,7 +251,7 @@ const S = {
   friendRow: (selected) => ({
     display: 'flex', alignItems: 'center', gap: 12,
     padding: '13px 20px', cursor: 'pointer',
-    background: selected ? '#1CE3A010' : 'var(--surface)',
+    background: selected ? 'var(--accent-soft)' : 'var(--surface)',
     borderBottom: '1px solid var(--border)',
     transition: 'background 0.1s',
   }),
@@ -263,12 +262,12 @@ const S = {
     alignItems: 'center', justifyContent: 'center',
     padding: 32,
   },
-  celebNum: { fontSize: 80, fontWeight: 800, color: '#1CE3A0', lineHeight: 1, marginBottom: 8 },
+  celebNum: { fontSize: 80, fontWeight: 800, color: 'var(--accent)', lineHeight: 1, marginBottom: 8 },
   celebTitle: { fontSize: 22, fontWeight: 700, color: 'var(--text)', textAlign: 'center', marginBottom: 6 },
   celebSub: { fontSize: 14, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 40 },
   continueBtn: {
     width: '100%', maxWidth: 320, padding: '14px 0', borderRadius: 14, border: 'none',
-    background: '#1CE3A0', color: '#0A5C3E',
+    background: 'var(--accent)', color: 'var(--text-on-brand)',
     fontSize: 15, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit',
   },
   inputStyle: {
@@ -364,7 +363,7 @@ function CelebrationScreen({ streak, onDismiss, todayKey }) {
 // ─── Active Streak Card ───────────────────────────────────────────────────────
 
 function ActiveStreakCard({ streak, onCheckIn, onAbandon, todayKey }) {
-  const cat = CATEGORIES.find(c => c.id === streak.category) || CATEGORIES[4];
+  const cat = CATEGORIES.find(c => c.id === streak.category) || CATEGORIES[3];
   const color = cat.color;
   const days = streak.duration ? getDayKeys(streak.startDate, streak.duration) : [];
   const doneCount = days.filter(d => streak.checkIns[d]).length;
@@ -428,7 +427,7 @@ function ActiveStreakCard({ streak, onCheckIn, onAbandon, todayKey }) {
 // ─── Streak Row (compact) ─────────────────────────────────────────────────────
 
 function StreakRow({ streak, onTap, todayKey }) {
-  const cat = CATEGORIES.find(c => c.id === streak.category) || CATEGORIES[4];
+  const cat = CATEGORIES.find(c => c.id === streak.category) || CATEGORIES[3];
   const color = cat.color;
   const current = calcStreak(streak.checkIns, todayKey);
   const todayDone = !!streak.checkIns[todayKey];
@@ -454,7 +453,7 @@ function StreakRow({ streak, onTap, todayKey }) {
 // ─── History Card ─────────────────────────────────────────────────────────────
 
 function HistoryCard({ streak, onDelete }) {
-  const cat = CATEGORIES.find(c => c.id === streak.category) || CATEGORIES[4];
+  const cat = CATEGORIES.find(c => c.id === streak.category) || CATEGORIES[3];
   const color = cat.color;
   const best = streak.bestStreak || 0;
   const statusLabel = streak.status === 'completed' ? 'Completed' : 'Abandoned';
@@ -665,7 +664,7 @@ function SharedCreateSheet({ open, onClose, onCreate, todayKey, friends, uid }) 
                   <p style={S.rowSub}>@{f.handle || 'user'}</p>
                 </div>
                 {selectedFriend?.id === f.id && (
-                  <span style={{ color: '#1CE3A0', fontSize: 20, fontWeight: 700 }}>✓</span>
+                  <span style={{ color: 'var(--accent)', fontSize: 20, fontWeight: 700 }}>✓</span>
                 )}
               </div>
             ))}
@@ -1085,8 +1084,8 @@ export default function Streaks({ store, user }) {
                             <button
                               onClick={() => { setChatPartner(u); setShowMessages(true); }}
                               style={{
-                                fontSize: 11, fontWeight: 700, color: '#1CE3A0',
-                                background: '#1CE3A018', border: '1px solid #1CE3A030',
+                                fontSize: 11, fontWeight: 700, color: 'var(--accent)',
+                                background: 'var(--accent)18', border: '1px solid var(--accent-soft)',
                                 borderRadius: 8, padding: '5px 10px', cursor: 'pointer',
                                 fontFamily: 'inherit', flexShrink: 0,
                               }}
@@ -1112,8 +1111,8 @@ export default function Streaks({ store, user }) {
                       }
                       return (
                         <button onClick={() => handleSendRequest(u.id, u.displayName)} style={{
-                          fontSize: 11, fontWeight: 700, color: '#1CE3A0',
-                          background: '#1CE3A018', border: '1px solid #1CE3A030',
+                          fontSize: 11, fontWeight: 700, color: 'var(--accent)',
+                          background: 'var(--accent)18', border: '1px solid var(--accent-soft)',
                           borderRadius: 8, padding: '5px 12px', cursor: 'pointer',
                           fontFamily: 'inherit', flexShrink: 0,
                         }}>Follow</button>
@@ -1163,8 +1162,8 @@ export default function Streaks({ store, user }) {
                     <button
                       onClick={() => { setChatPartner(u); setShowMessages(true); }}
                       style={{
-                        fontSize: 11, fontWeight: 700, color: '#1CE3A0',
-                        background: '#1CE3A018', border: '1px solid #1CE3A030',
+                        fontSize: 11, fontWeight: 700, color: 'var(--accent)',
+                        background: 'var(--accent)18', border: '1px solid var(--accent-soft)',
                         borderRadius: 8, padding: '5px 12px', cursor: 'pointer',
                         fontFamily: 'inherit', flexShrink: 0,
                       }}
@@ -1293,8 +1292,8 @@ export default function Streaks({ store, user }) {
                                 onClick={() => acceptPending(p.id)}
                                 style={{
                                   padding: '7px 18px', borderRadius: 8, border: 'none',
-                                  background: '#1CE3A0',
-                                  color: '#0A5C3E',
+                                  background: 'var(--accent)',
+                                  color: 'var(--text-on-brand)',
                                   fontSize: 13, fontWeight: 700, cursor: 'pointer',
                                   fontFamily: 'inherit', flexShrink: 0, transition: 'all 0.15s',
                                 }}

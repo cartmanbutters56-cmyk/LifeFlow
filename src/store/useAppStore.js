@@ -8,17 +8,13 @@ import { signOut } from '../firebase/auth';
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 const weekDates = buildWeekDates();
 const OZ_TO_ML = 29.5735;
-const defaultWeekPlan = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday']
-  .reduce((acc, day) => ({ ...acc, [day]: { category: '', exercises: [] } }), {});
 
 const seedChallenges = [
   { id:'ch1', title:'Hydration Hero', description:'Hit your water goal every day', icon:'💧', category:'water', color:'#06B6D4', duration:7, status:'available', startDate:null, completedDate:null, checkIns:{} },
   { id:'ch2', title:'Sugar-Free Week', description:'No added sugar for 7 days', icon:'🍎', category:'nutrition', color:'#10B981', duration:7, status:'available', startDate:null, completedDate:null, checkIns:{} },
-  { id:'ch3', title:'Move Daily', description:'Exercise 30 min every day', icon:'🏃', category:'fitness', color:'#F59E0B', duration:7, status:'available', startDate:null, completedDate:null, checkIns:{} },
   { id:'ch4', title:'Meal Master', description:'Log all meals for 14 days', icon:'🥗', category:'nutrition', color:'#F43F5E', duration:14, status:'available', startDate:null, completedDate:null, checkIns:{} },
   { id:'ch5', title:'Mindful Mornings', description:'10 min meditation daily', icon:'🧘', category:'mindfulness', color:'#A78BFA', duration:14, status:'available', startDate:null, completedDate:null, checkIns:{} },
   { id:'ch6', title:'Perfect Week', description:'100% daily score for 7 days', icon:'⭐', category:'lifestyle', color:'#FBBF24', duration:7, status:'available', startDate:null, completedDate:null, checkIns:{} },
-  { id:'ch7', title:'Strength Builder', description:'3 gym sessions/week for 3 weeks', icon:'💪', category:'fitness', color:'#EC4899', duration:21, status:'available', startDate:null, completedDate:null, checkIns:{} },
   { id:'ch8', title:'30-Day Champion', description:'Complete all daily tasks for 30 days', icon:'🏆', category:'lifestyle', color:'#8B5CF6', duration:30, status:'available', startDate:null, completedDate:null, checkIns:{} },
 ];
 
@@ -60,23 +56,6 @@ export function useAppStore(userId, displayName) {
     if (data && data.length) return data;
     return seedChallenges;
   });
-  const [gymWeekPlan, setGymWeekPlanState] = useState(() => {
-    const fromNew = load('gymPlan', null);
-    if (fromNew) return fromNew;
-    // Migrate from old localStorage key used by the previous version
-    if (userId) {
-      try {
-        const oldKey = `gym_${userId}_week_plan`;
-        const oldRaw = localStorage.getItem(oldKey);
-        if (oldRaw) {
-          const oldData = JSON.parse(oldRaw);
-          save('gymPlan', oldData);
-          return oldData;
-        }
-      } catch {}
-    }
-    return null;
-  });
   const [friendsRefreshKey, setFriendsRefreshKey] = useState(0);
   const refreshFriends = useCallback(() => setFriendsRefreshKey(k => k + 1), []);
 
@@ -85,15 +64,9 @@ export function useAppStore(userId, displayName) {
 
   const todayDayName = DAYS[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
 
-  // ─── Flags ──────────────────────────────────────────────────────────────────
-  // isSyncing: true while applying incoming Firestore data — prevents echo writes
+  // ─── Flag: true while applying incoming Firestore data ──────────────────────
+  // Prevents echo-writing remote changes back to Firestore
   const isSyncing = useRef(false);
-  // initialSyncDone: true after the first onSnapshot fires — prevents pushing
-  // stale localStorage data before Firestore has caught up
-  const initialSyncDone = useRef(false);
-  // syncGeneration: bumped after initial sync completes so pending user changes
-  // made before the first snapshot get pushed to Firestore
-  const [syncGeneration, setSyncGeneration] = useState(0);
 
   useEffect(() => { save('themeMode', themeMode); }, [themeMode]);
   useEffect(() => { save('profileName', profileName); }, [profileName]);
@@ -114,10 +87,6 @@ export function useAppStore(userId, displayName) {
   const sessionId = useRef(null);
   const currentProfileNameRef = useRef(profileName);
   useEffect(() => { currentProfileNameRef.current = profileName; }, [profileName]);
-  const routinesRef = useRef(routines);
-  useEffect(() => { routinesRef.current = routines; }, [routines]);
-  const gymPlanRef = useRef(gymWeekPlan);
-  useEffect(() => { gymPlanRef.current = gymWeekPlan; }, [gymWeekPlan]);
 
   useEffect(() => {
     if (!userId) return;
@@ -126,9 +95,9 @@ export function useAppStore(userId, displayName) {
     sessionId.current = sid;
     const ref = doc(db, 'users', userId);
 
-    // Register this session (do NOT write displayName — it's managed separately
-    // via updateUserProfile to avoid overwriting the value set by another device)
+    // Register this session
     setDoc(ref, {
+      displayName: profileName || displayName || '',
       currentSession: sid,
       lastSeen: serverTimestamp(),
     }, { merge: true }).catch(() => {});
@@ -138,72 +107,60 @@ export function useAppStore(userId, displayName) {
       if (!snap.exists()) return;
       const data = snap.data();
 
-      const isFirstSync = !initialSyncDone.current;
-      initialSyncDone.current = true;
-      isSyncing.current = true;
-
       // ── Session: kick duplicate logins ──────────────────────────────────────
       if (data.currentSession && data.currentSession !== sessionId.current) {
-        isSyncing.current = false;
         signOut().catch(() => {});
         return;
       }
 
       // ── Profile name ────────────────────────────────────────────────────────
       if (data.displayName && data.displayName !== currentProfileNameRef.current) {
+        isSyncing.current = true;
         setProfileName(data.displayName);
+        // Let React flush before clearing the flag
+        setTimeout(() => { isSyncing.current = false; }, 0);
       }
 
-      // ── Settings (top-level fields with legacy appSettings fallback) ──────
-      const read = (field, fallback) => data[field] !== undefined ? data[field] : fallback;
+      // ── App settings ────────────────────────────────────────────────────────
+      const s = data.appSettings;
+      if (s) {
+        isSyncing.current = true;
+        if (s.themeMode !== undefined) setThemeMode(s.themeMode);
+        if (s.waterUnit !== undefined) setWaterUnitState(s.waterUnit);
+        if (s.waterGoal !== undefined) setWaterGoalState(s.waterGoal);
+        if (s.calorieGoal !== undefined) setCalorieGoalState(s.calorieGoal);
+        if (s.routines !== undefined) setRoutines(s.routines);
+        if (s.challenges !== undefined) setChallenges(s.challenges);
+        setTimeout(() => { isSyncing.current = false; }, 0);
+      }
 
-      if (read('themeMode', data.appSettings?.themeMode) !== undefined) setThemeMode(read('themeMode', data.appSettings?.themeMode));
-      if (read('waterUnit', data.appSettings?.waterUnit) !== undefined) setWaterUnitState(read('waterUnit', data.appSettings?.waterUnit));
-      if (read('waterGoal', data.appSettings?.waterGoal) !== undefined) setWaterGoalState(read('waterGoal', data.appSettings?.waterGoal));
-      if (read('calorieGoal', data.appSettings?.calorieGoal) !== undefined) setCalorieGoalState(read('calorieGoal', data.appSettings?.calorieGoal));
-      if (read('challenges', data.appSettings?.challenges) !== undefined) setChallenges(read('challenges', data.appSettings?.challenges));
-
-      const remoteRoutines = read('routines', data.appSettings?.routines);
-      if (remoteRoutines !== undefined) setRoutines(remoteRoutines);
-
-      const remoteGymPlan = read('gymWeekPlan', data.appSettings?.gymWeekPlan);
-      if (remoteGymPlan !== undefined) setGymWeekPlanState(remoteGymPlan);
-
-      // ── Daily data (top-level fields with legacy dailyData fallback) ──────
-      const buildFromLegacy = () => {
-        const dd = data.dailyData;
-        if (!dd) return {};
+      // ── Daily data ──────────────────────────────────────────────────────────
+      const dd = data.dailyData;
+      if (dd) {
         const dateKeys = Object.keys(dd).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k));
-        const result = { waterIntake: {}, meals: {}, completionHistory: {}, waterHistory: {}, routineCompletions: {} };
-        dateKeys.forEach(dk => {
-          const day = dd[dk];
-          if (day?.waterIntake !== undefined) result.waterIntake[dk] = day.waterIntake;
-          if (day?.meals !== undefined) result.meals[dk] = day.meals;
-          if (day?.completionHistory !== undefined) result.completionHistory[dk] = day.completionHistory;
-          if (day?.waterHistory !== undefined) result.waterHistory[dk] = day.waterHistory;
-          if (day?.routineCompletions) Object.assign(result.routineCompletions, day.routineCompletions);
-        });
-        return result;
-      };
-      const legacy = buildFromLegacy();
+        if (dateKeys.length) {
+          isSyncing.current = true;
 
-      const remoteWI = read('waterIntake', legacy.waterIntake);
-      if (Object.keys(remoteWI).length) setWaterIntake(prev => ({ ...prev, ...remoteWI }));
-      const remoteMeals = read('meals', legacy.meals);
-      if (Object.keys(remoteMeals).length) setMeals(prev => ({ ...prev, ...remoteMeals }));
-      const remoteCH = read('completionHistory', legacy.completionHistory);
-      if (Object.keys(remoteCH).length) setCompletionHistory(prev => ({ ...prev, ...remoteCH }));
-      const remoteWH = read('waterHistory', legacy.waterHistory);
-      if (Object.keys(remoteWH).length) setWaterHistory(prev => ({ ...prev, ...remoteWH }));
-      const remoteRC = read('routineCompletions', legacy.routineCompletions);
-      if (Object.keys(remoteRC).length) setRoutineCompletions(prev => ({ ...prev, ...remoteRC }));
+          let wi = {}, m = {}, ch = {}, wh = {}, rc = {};
+          dateKeys.forEach(dk => {
+            const day = dd[dk];
+            if (day?.waterIntake !== undefined) wi[dk] = day.waterIntake;
+            if (day?.meals !== undefined) m[dk] = day.meals;
+            if (day?.completionHistory !== undefined) ch[dk] = day.completionHistory;
+            if (day?.waterHistory !== undefined) wh[dk] = day.waterHistory;
+            if (day?.routineCompletions) Object.assign(rc, day.routineCompletions);
+          });
 
-      // Clear syncing flag after React flushes, then bump the generation
-      // so any user changes made before initial sync get pushed to Firestore
-      setTimeout(() => {
-        isSyncing.current = false;
-        if (isFirstSync) setSyncGeneration(g => g + 1);
-      }, 0);
+          // Merge incoming data over local state (remote wins for cross-device sync)
+          if (Object.keys(wi).length) setWaterIntake(prev => ({ ...prev, ...wi }));
+          if (Object.keys(m).length) setMeals(prev => ({ ...prev, ...m }));
+          if (Object.keys(ch).length) setCompletionHistory(prev => ({ ...prev, ...ch }));
+          if (Object.keys(wh).length) setWaterHistory(prev => ({ ...prev, ...wh }));
+          if (Object.keys(rc).length) setRoutineCompletions(prev => ({ ...prev, ...rc }));
+
+          setTimeout(() => { isSyncing.current = false; }, 0);
+        }
+      }
     }, (err) => {
       console.warn('Firestore listener error:', err);
     });
@@ -212,17 +169,46 @@ export function useAppStore(userId, displayName) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
-  // ─── Firestore: push data as top-level fields (skip if syncing) ─────────
+  // ─── Firestore: push settings when they change (skip if syncing) ─────────
   useEffect(() => {
-    if (!userId || isSyncing.current || !initialSyncDone.current) return;
+    if (!userId || isSyncing.current) return;
     const ref = doc(db, 'users', userId);
     setDoc(ref, {
-      themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges, gymWeekPlan,
-      waterIntake, meals, completionHistory, waterHistory, routineCompletions,
+      appSettings: { themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges }
     }, { merge: true }).catch(() => {});
-  }, [userId, themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges,
-      gymWeekPlan, waterIntake, meals, completionHistory, waterHistory,
-      routineCompletions, syncGeneration]);
+  }, [userId, themeMode, waterUnit, waterGoal, calorieGoal, routines, challenges]);
+
+  // ─── Firestore: push daily data when it changes (skip if syncing) ────────
+  useEffect(() => {
+    if (!userId || isSyncing.current) return;
+
+    const allKeys = [...new Set([
+      ...Object.keys(waterIntake),
+      ...Object.keys(meals),
+      ...Object.keys(completionHistory),
+      ...Object.keys(waterHistory),
+      ...Object.keys(routineCompletions).map(k => k.split('_').pop()),
+    ])];
+    if (!allKeys.length) return;
+
+    const daily = {};
+    allKeys.forEach(dk => {
+      const entry = {};
+      if (waterIntake[dk] !== undefined) entry.waterIntake = waterIntake[dk];
+      if (meals[dk] !== undefined) entry.meals = meals[dk];
+      if (completionHistory[dk] !== undefined) entry.completionHistory = completionHistory[dk];
+      if (waterHistory[dk] !== undefined) entry.waterHistory = waterHistory[dk];
+      const rcs = Object.keys(routineCompletions)
+        .filter(k => k.endsWith(`_${dk}`))
+        .reduce((a, k) => ({ ...a, [k]: routineCompletions[k] }), {});
+      if (Object.keys(rcs).length) entry.routineCompletions = rcs;
+      daily[dk] = entry;
+    });
+
+    const ref = doc(db, 'users', userId);
+    // Use merge:true so partial updates from other devices aren't wiped
+    setDoc(ref, { dailyData: daily }, { merge: true }).catch(() => {});
+  }, [userId, waterIntake, meals, completionHistory, routineCompletions, waterHistory]);
 
   // Apply effective theme to body
   useEffect(() => {
@@ -253,7 +239,6 @@ export function useAppStore(userId, displayName) {
   useEffect(() => { save('wh', waterHistory); }, [waterHistory]);
   useEffect(() => { save('calgoal', calorieGoal); }, [calorieGoal]);
   useEffect(() => { save('challenges', challenges); }, [challenges]);
-  useEffect(() => { save('gymPlan', gymWeekPlan); }, [gymWeekPlan]);
   useEffect(() => { save('ds', dailySummaries); }, [dailySummaries]);
 
   // ─── Midnight Detection ──────────────────────────────────────────────────────
@@ -327,7 +312,7 @@ export function useAppStore(userId, displayName) {
   const updateRoutine = useCallback((id, upd) => setRoutines(prev => prev.map(r => r.id === id ? { ...r, ...upd } : r)), []);
   const deleteRoutine = useCallback(id => setRoutines(prev => prev.filter(r => r.id !== id)), []);
 
-  const todayRoutines = routines.filter(r => r.days?.includes(todayDayName));
+  const todayRoutines = routines.filter(r => r.days.includes(todayDayName));
   const todayRoutinesDone = todayRoutines.filter(r => isRoutineDone(r.id, todayKey)).length;
 
   // ─── Meals ───────────────────────────────────────────────────────────────────
@@ -358,9 +343,6 @@ export function useAppStore(userId, displayName) {
   }), [waterGoal]);
   const resetWater = useCallback(() => setWaterIntake(prev => ({ ...prev, [todayKey]: 0 })), []);
   const setWaterGoal = useCallback(g => setWaterGoalState(g), []);
-  const setGymWeekPlan = useCallback(fn => {
-    setGymWeekPlanState(prev => typeof fn === 'function' ? fn(prev) : fn);
-  }, []);
 
   // ─── Challenges ──────────────────────────────────────────────────────────────
   const startChallenge = useCallback((id) => {
@@ -503,6 +485,5 @@ export function useAppStore(userId, displayName) {
     todayMeals, todayMealsDone,
     resetAllData,
     friendsRefreshKey, refreshFriends,
-    gymWeekPlan, setGymWeekPlan,
   };
-}
+} 

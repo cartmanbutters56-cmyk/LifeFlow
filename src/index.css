@@ -192,7 +192,7 @@ input[type="number"] { -moz-appearance:textfield; }
 /* ─── Phone Mockup (Desktop) ──────────────────────────────────────── */
 @media (min-width: 768px) {
   body {
-    background: linear-gradient(160deg, #eef0f5 0%, #dce0e8 50%, #cdd2dc 100%);
+    background: linear-gradient(160deg, #EDE9E2 0%, #DFDAD1 50%, #D1CCC3 100%);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -200,7 +200,7 @@ input[type="number"] { -moz-appearance:textfield; }
   }
 
   body[data-theme="dark"] {
-    background: linear-gradient(160deg, #1c1f26 0%, #14171d 50%, #0e1014 100%);
+    background: linear-gradient(160deg, #16161E 0%, #111117 50%, #0C0C10 100%);
   }
 
   #root {
