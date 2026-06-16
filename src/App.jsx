@@ -146,6 +146,25 @@ const PAGES = {
   routines: RoutinePlanner,
 };
 
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) { console.error('ErrorBoundary caught:', error, info); }
+  render() {
+    if (this.state.error) {
+      return React.createElement('div', {
+        style: { padding: 40, fontFamily: 'sans-serif', color: '#333' }
+      },
+        React.createElement('h2', {}, 'Something went wrong'),
+        React.createElement('pre', {
+          style: { background: '#f5f5f5', padding: 16, borderRadius: 8, fontSize: 13, whiteSpace: 'pre-wrap' }
+        }, this.state.error.stack || this.state.error.message)
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function AppContent({ user }) {
   const store = useAppStore(user?.uid, user?.displayName);
   const { activeTab, setActiveTab } = store;
@@ -247,5 +266,5 @@ export default function App() {
     return <AuthPage />;
   }
 
-  return <AppContent key={user.uid} user={user} />;
+  return <ErrorBoundary key={user.uid}><AppContent user={user} /></ErrorBoundary>;
 }
