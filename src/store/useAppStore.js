@@ -86,6 +86,7 @@ export function useAppStore(userId, displayName) {
   // ─── Firestore: real-time listener (replaces one-time getDoc) ───────────────
   const sessionId = useRef(null);
   const sessionWritePending = useRef(false);
+  const knownSessionIds = useRef(new Set());
   const currentProfileNameRef = useRef(profileName);
   useEffect(() => { currentProfileNameRef.current = profileName; }, [profileName]);
 
@@ -93,6 +94,7 @@ export function useAppStore(userId, displayName) {
     if (!userId) return;
 
     const sid = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 9);
+    knownSessionIds.current.add(sid);
     sessionId.current = sid;
     const ref = doc(db, 'users', userId);
 
@@ -115,6 +117,11 @@ export function useAppStore(userId, displayName) {
 
       // ── Session: kick duplicate logins ──────────────────────────────────────
       if (data.currentSession && data.currentSession !== sessionId.current && !sessionWritePending.current) {
+        // If this session ID was written by one of our own previous effects
+        // (e.g. React StrictMode double-mount), it's stale — ignore it
+        if (knownSessionIds.current.has(data.currentSession)) {
+          return;
+        }
         signOut().catch(() => {});
         return;
       }
