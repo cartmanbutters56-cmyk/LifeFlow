@@ -85,6 +85,7 @@ export function useAppStore(userId, displayName) {
 
   // ─── Firestore: real-time listener (replaces one-time getDoc) ───────────────
   const sessionId = useRef(null);
+  const sessionWritePending = useRef(false);
   const currentProfileNameRef = useRef(profileName);
   useEffect(() => { currentProfileNameRef.current = profileName; }, [profileName]);
 
@@ -95,12 +96,17 @@ export function useAppStore(userId, displayName) {
     sessionId.current = sid;
     const ref = doc(db, 'users', userId);
 
-    // Register this session
+    // Register this session (mark pending to prevent race with onSnapshot)
+    sessionWritePending.current = true;
     setDoc(ref, {
       displayName: profileName || displayName || '',
       currentSession: sid,
       lastSeen: serverTimestamp(),
-    }, { merge: true }).catch(() => {});
+    }, { merge: true }).then(function () {
+      sessionWritePending.current = false;
+    }).catch(function () {
+      sessionWritePending.current = false;
+    });
 
     // Single real-time listener handles BOTH session management AND data sync
     const unsub = onSnapshot(ref, (snap) => {
@@ -108,7 +114,7 @@ export function useAppStore(userId, displayName) {
       const data = snap.data();
 
       // ── Session: kick duplicate logins ──────────────────────────────────────
-      if (data.currentSession && data.currentSession !== sessionId.current) {
+      if (data.currentSession && data.currentSession !== sessionId.current && !sessionWritePending.current) {
         signOut().catch(() => {});
         return;
       }
