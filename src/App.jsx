@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from './store/useAppStore';
-import { auth, onAuthStateChanged } from './firebase/auth';
+import { auth, onAuthStateChanged, getRedirectResult } from './firebase/auth';
+import { createUserProfile } from './firebase/friends';
 
 import AuthPage from './pages/AuthPage';
 import Dashboard from './pages/Dashboard';
@@ -194,6 +195,11 @@ export default function App() {
       setUser(firebaseUser);
       setAuthLoading(false);
     });
+    getRedirectResult(auth).then(function (result) {
+      if (result) {
+        createUserProfile(result.user.uid, result.user.displayName || '', result.user.displayName || '', '').catch(function () {});
+      }
+    }).catch(function () {});
     return () => unsub();
   }, []);
 
