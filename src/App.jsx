@@ -194,32 +194,45 @@ export default function App() {
     var unsub = null;
     var cancelled = false;
 
-    getRedirectResult(auth).then(function (result) {
+    // Fallback: if auth takes >5s, stop loading to show login/error
+    var fallbackTimer = setTimeout(function () {
       if (cancelled) return;
+      console.warn('[Auth] timed out, forcing stop');
+      setAuthLoading(false);
+    }, 5000);
+
+    getRedirectResult(auth).then(function (result) {
+      clearTimeout(fallbackTimer);
+      if (cancelled) return;
+      console.log('[Auth] getRedirectResult:', result ? result.user.email : 'null');
       if (result) {
-        alert('Redirect found: ' + result.user.email);
         setUser(result.user);
         setAuthLoading(false);
         createUserProfile(result.user.uid, result.user.displayName || '', result.user.displayName || '', '').catch(function () {});
         unsub = onAuthStateChanged(auth, function (firebaseUser) {
+          console.log('[Auth] onAuthStateChanged after redirect:', firebaseUser?.email);
           setUser(firebaseUser);
         });
         return;
       }
       unsub = onAuthStateChanged(auth, function (firebaseUser) {
+        console.log('[Auth] onAuthStateChanged:', firebaseUser?.email);
         setUser(firebaseUser);
         setAuthLoading(false);
       });
     }).catch(function (err) {
+      clearTimeout(fallbackTimer);
       if (cancelled) return;
-      alert('Redirect error: ' + (err.code || err.message));
+      console.error('[Auth] getRedirectResult error:', err.code, err.message);
       unsub = onAuthStateChanged(auth, function (firebaseUser) {
+        console.log('[Auth] onAuthStateChanged after error:', firebaseUser?.email);
         setUser(firebaseUser);
         setAuthLoading(false);
       });
     });
 
     return function () {
+      clearTimeout(fallbackTimer);
       cancelled = true;
       if (unsub) unsub();
     };
