@@ -195,16 +195,19 @@ const GLOBAL_STYLE = `
 
   /* Session card */
   .sesh-card {
-    display: flex; gap: 14px; align-items: stretch;
-    padding: 14px 18px;
-    border-bottom: 0.5px solid var(--border);
+    margin: 10px 18px;
+    border-radius: 16px;
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    box-shadow: var(--shadow-card);
     cursor: pointer;
-    transition: background 0.15s;
+    overflow: hidden;
+    transition: transform 0.15s, box-shadow 0.15s;
     -webkit-tap-highlight-color: transparent;
   }
-  .sesh-card:active { background: var(--surface-2); }
+  .sesh-card:active { transform: scale(0.98); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
 
-  /* Route thumb */
+  /* Route thumb (for empty state fallback) */
   .route-thumb {
     flex-shrink: 0;
     border-radius: 14px;
@@ -947,10 +950,10 @@ function HistoryPanel({ sessions, weight, isOpen, onClose }) {
                 className="sesh-card"
                 onClick={function () { setActiveSession(s); }}
               >
-                {/* Mini map with route line */}
+                {/* Full-width mini map */}
                 <MiniMap route={s.route || []} color={isJog ? '#FF5C3D' : '#8FD60A'} />
 
-                <div className="sesh-info">
+                <div style={{ padding: '12px 16px' }}>
                   <div className="sesh-top">
                     <div className="sesh-type">
                       {isJog ? '🏃 ' : '🚶 '}
@@ -992,15 +995,6 @@ function HistoryPanel({ sessions, weight, isOpen, onClose }) {
 // ─── Mini map for history cards ──────────────────────────────────────────────
 function MiniMap({ route, color }) {
   var mapRef = useRef(null);
-  var rendered = useRef(false);
-
-  useEffect(function () {
-    if (!route || route.length < 2 || rendered.current) return;
-    rendered.current = true;
-    var map = mapRef.current;
-    if (!map) return;
-    setTimeout(function () { map.invalidateSize(); }, 100);
-  }, [route]);
 
   if (!route || route.length < 2) {
     return (
@@ -1013,9 +1007,6 @@ function MiniMap({ route, color }) {
   }
 
   var positions = route.map(function (p) { return [p.lat, p.lng]; });
-  var lats = route.map(function (p) { return p.lat; });
-  var lngs = route.map(function (p) { return p.lng; });
-  var center = [(Math.min(...lats) + Math.max(...lats)) / 2, (Math.min(...lngs) + Math.max(...lngs)) / 2];
 
   function FitMapBounds() {
     var map = useMap();
@@ -1024,15 +1015,17 @@ function MiniMap({ route, color }) {
       if (fitted.current) return;
       fitted.current = true;
       var bounds = L.latLngBounds(positions);
-      map.fitBounds(bounds, { padding: [12, 12], maxZoom: 17 });
+      map.fitBounds(bounds, { padding: [20, 20], maxZoom: 17 });
+      setTimeout(function () { map.invalidateSize(); }, 200);
     }, [map]);
     return null;
   }
 
   return (
-    <div style={{ width: 72, height: 72, borderRadius: 12, overflow: 'hidden', flexShrink: 0, border: '0.5px solid var(--border)' }}>
+    <div style={{ width: '100%', height: 140, overflow: 'hidden' }}>
       <MapContainer
-        center={center}
+        key={positions.length ? positions[0].join() + positions[positions.length - 1].join() : 'empty'}
+        center={positions[0]}
         zoom={15}
         style={{ width: '100%', height: '100%' }}
         zoomControl={false}
@@ -1041,10 +1034,9 @@ function MiniMap({ route, color }) {
         dragging={false}
         touchZoom={false}
         doubleClickZoom={false}
-        ref={mapRef}
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <Polyline positions={positions} pathOptions={{ color: color, weight: 3, opacity: 0.9 }} />
+        <Polyline positions={positions} pathOptions={{ color: color, weight: 4, opacity: 0.95 }} />
         <FitMapBounds />
       </MapContainer>
     </div>
