@@ -691,10 +691,10 @@ export default function RoutinePlanner({ store, setActiveTab, user, hideNav }) {
 
       {/* ── Calendar Grid ── */}
       <div style={{
-        margin: '0 18px', borderRadius: 16, overflow: 'hidden',
+        margin: '20px 18px 0', borderRadius: 16, overflow: 'hidden',
         background: 'var(--calendar-bg)', padding: '14px 14px',
         opacity: mounted ? 1 : 0,
-        transition: 'all 0.4s ease 0.08s',
+        transition: 'all 0.4s ease 0.14s',
       }}>
         {/* Day headers */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', marginBottom: 6 }}>
@@ -764,7 +764,7 @@ export default function RoutinePlanner({ store, setActiveTab, user, hideNav }) {
       <div style={{
         padding: '20px 18px 0',
         opacity: mounted ? 1 : 0,
-        transition: 'all 0.4s ease 0.12s',
+        transition: 'all 0.4s ease 0.16s',
       }}>
         <div style={{
           fontSize: 15, fontWeight: 800, color: 'var(--text)',
@@ -847,8 +847,6 @@ export default function RoutinePlanner({ store, setActiveTab, user, hideNav }) {
           </div>
         </div>
       </div>
-
-
 
       {/* ── Upcoming Schedule (collapsible) ── */}
       <div style={{

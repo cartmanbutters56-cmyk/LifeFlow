@@ -217,7 +217,7 @@ export default function Dashboard({ store, user }) {
       </div>
 
       {/* ═══ WEEK STRIP ═══ */}
-      <div style={{ padding: '0 22px 20px', ...fadeUp(0.05) }}>
+      <div style={{ padding: '0 22px 20px', ...fadeUp(0.10) }}>
         <div style={{ display: 'flex', gap: 4 }}>
           {weekDays.map((d) => (
             <div key={d.dateKey} style={{
@@ -441,101 +441,82 @@ export default function Dashboard({ store, user }) {
         </div>
       </div>
 
-      {/* ═══ ACTIVITY HUB 2×2 ═══ */}
-      <div style={{ padding: '0 22px', marginBottom: 16, ...fadeUp(0.24) }}>
+      {/* ═══ ACTIVITY HUB ═══ */}
+      <div style={{ padding: '0 22px', marginBottom: 20, ...fadeUp(0.24) }}>
         <SectionBar title="Activity Hub" />
-
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 9 }}>
+        <div style={{ display: 'flex', gap: 10 }}>
           {[
             {
               tab: 'routines',
-              label: 'Routine Planner',
-              emoji: '📅',
-              gradient: 'linear-gradient(145deg, #6B62C8, #9B8FF5)',
-              desc: 'Daily habits',
+              label: 'Planner',
+              icon: (
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              ),
+              accent: '#7C6FF7',
+              bg: 'var(--accent-soft)',
             },
             {
               tab: 'meals',
-              label: 'Meal Planner',
-              emoji: '🍽️',
-              gradient: 'linear-gradient(145deg, #C45A5C, #E88080)',
-              desc: 'Track nutrition',
+              label: 'Meals',
+              icon: (
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8h1a4 4 0 0 1 0 8h-1" />
+                  <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z" />
+                  <line x1="6" y1="1" x2="6" y2="4" /><line x1="10" y1="1" x2="10" y2="4" /><line x1="14" y1="1" x2="14" y2="4" />
+                </svg>
+              ),
+              accent: '#E88080',
+              bg: 'rgba(232,128,128,0.12)',
             },
             {
               tab: 'water',
-              label: 'Water Tracker',
-              emoji: '💧',
-              gradient: 'linear-gradient(145deg, #2E7EC4, #5AAAE0)',
-              desc: 'Stay hydrated',
+              label: 'Water',
+              icon: (
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2C8 9 5 13 5 17a7 7 0 0 0 14 0c0-4-3-8-7-15z" />
+                </svg>
+              ),
+              accent: '#5AAAE0',
+              bg: 'rgba(90,170,224,0.12)',
             },
           ].map((card) => (
             <button
               key={card.tab}
               onClick={() => setActiveTab?.(card.tab)}
               style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                justifyContent: 'space-between',
-                /* Smaller cards than before */
-                padding: '13px 12px 12px',
+                flex: 1,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+                padding: '16px 8px',
                 borderRadius: 18,
-                background: card.gradient,
-                border: 'none',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
-                textAlign: 'left',
-                aspectRatio: '1 / 1',
-                boxSizing: 'border-box',
-                transition: 'transform 0.16s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.16s ease',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-                position: 'relative',
-                overflow: 'hidden',
+                boxShadow: 'var(--shadow-card)',
+                transition: 'transform 0.2s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.2s ease',
               }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'scale(1.035)';
-                e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.2)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)';
-              }}
-              onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.96)'; }}
-              onMouseUp={e => { e.currentTarget.style.transform = 'scale(1.035)'; }}
-              onTouchStart={e => { e.currentTarget.style.transform = 'scale(0.96)'; }}
-              onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.1)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'var(--shadow-card)'; }}
+              onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.95)'; }}
+              onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-3px)'; }}
+              onTouchStart={e => { e.currentTarget.style.transform = 'scale(0.95)'; }}
+              onTouchEnd={e => { e.currentTarget.style.transform = 'none'; }}
             >
-              {/* Decorative circle */}
               <div style={{
-                position: 'absolute', top: -14, right: -14, width: 64, height: 64,
-                borderRadius: '50%', background: 'rgba(255,255,255,0.1)', pointerEvents: 'none',
-              }} />
-
-              {/* Emoji icon */}
-              <div style={{
-                width: 36, height: 36, borderRadius: 11,
-                background: 'rgba(0,0,0,0.18)',
+                width: 42, height: 42, borderRadius: 14,
+                background: card.bg,
+                color: card.accent,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 17,
               }}>
-                {card.emoji}
+                {card.icon}
               </div>
-
-              {/* Label */}
-              <div style={{ paddingTop: 10 }}>
-                <div style={{
-                  fontSize: 12, fontWeight: 800, color: '#fff',
-                  lineHeight: 1.2, letterSpacing: '-0.1px',
-                }}>
-                  {card.label}
-                </div>
-                <div style={{
-                  fontSize: 9, fontWeight: 600,
-                  color: 'rgba(255,255,255,0.65)', marginTop: 2,
-                }}>
-                  {card.desc}
-                </div>
-              </div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', lineHeight: 1.2 }}>
+                {card.label}
+              </span>
             </button>
           ))}
         </div>
