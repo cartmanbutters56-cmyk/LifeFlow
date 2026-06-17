@@ -195,19 +195,16 @@ const GLOBAL_STYLE = `
 
   /* Session card */
   .sesh-card {
-    margin: 10px 18px;
-    border-radius: 16px;
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    box-shadow: var(--shadow-card);
+    display: flex; gap: 14px; align-items: stretch;
+    padding: 14px 18px;
+    border-bottom: 0.5px solid var(--border);
     cursor: pointer;
-    overflow: hidden;
-    transition: transform 0.15s, box-shadow 0.15s;
+    transition: background 0.15s;
     -webkit-tap-highlight-color: transparent;
   }
-  .sesh-card:active { transform: scale(0.98); box-shadow: 0 1px 4px rgba(0,0,0,0.06); }
+  .sesh-card:active { background: var(--surface-2); }
 
-  /* Route thumb (for empty state fallback) */
+  /* Route thumb */
   .route-thumb {
     flex-shrink: 0;
     border-radius: 14px;
@@ -932,10 +929,10 @@ function HistoryPanel({ sessions, weight, isOpen, onClose }) {
                 className="sesh-card"
                 onClick={function () { setActiveSession(s); }}
               >
-                {/* Full-width mini map */}
+                {/* Mini map thumbnail */}
                 <MiniMap route={s.route || []} color={isJog ? '#FF5C3D' : '#8FD60A'} />
 
-                <div style={{ padding: '12px 16px' }}>
+                <div className="sesh-info">
                   <div className="sesh-top">
                     <div className="sesh-type">
                       {isJog ? '🏃 ' : '🚶 '}
@@ -974,53 +971,56 @@ function HistoryPanel({ sessions, weight, isOpen, onClose }) {
   );
 }
 
-// ─── Mini map for history cards ──────────────────────────────────────────────
+// ─── Mini map thumbnail for history cards ──────────────────────────────────
 function MiniMap({ route, color }) {
-  var mapRef = useRef(null);
-
   if (!route || route.length < 2) {
     return (
       <div className="route-thumb" style={{ width: 72, height: 72 }}>
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--text-3)" strokeWidth="1.5" opacity="0.4">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3">
           <path d="M3 17l4-8 5 5 3-4 5 6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>
     );
   }
 
-  var positions = route.map(function (p) { return [p.lat, p.lng]; });
+  var size   = 72;
+  var lats   = route.map(p => p.lat);
+  var lngs   = route.map(p => p.lng);
+  var minLat = Math.min(...lats);
+  var maxLat = Math.max(...lats);
+  var minLng = Math.min(...lngs);
+  var maxLng = Math.max(...lngs);
+  var pad    = 9;
+  var w      = size - pad * 2;
+  var h      = size - pad * 2;
+  var spanLat = maxLat - minLat || 0.0001;
+  var spanLng = maxLng - minLng || 0.0001;
+  var scale  = Math.min(w / spanLng, h / spanLat);
+  var offX   = pad + (w - spanLng * scale) / 2;
+  var offY   = pad + (h - spanLat * scale) / 2;
 
-  function FitMapBounds() {
-    var map = useMap();
-    var fitted = useRef(false);
-    useEffect(function () {
-      if (fitted.current) return;
-      fitted.current = true;
-      var bounds = L.latLngBounds(positions);
-      map.fitBounds(bounds, { padding: [20, 20], maxZoom: 17 });
-      setTimeout(function () { map.invalidateSize(); }, 200);
-    }, [map]);
-    return null;
-  }
+  var points = route.map(p => {
+    var x = offX + (p.lng - minLng) * scale;
+    var y = offY + (maxLat - p.lat) * scale;
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+
+  var fx = (offX + (route[0].lng - minLng) * scale).toFixed(1);
+  var fy = (offY + (maxLat - route[0].lat) * scale).toFixed(1);
+  var lx = (offX + (route[route.length - 1].lng - minLng) * scale).toFixed(1);
+  var ly = (offY + (maxLat - route[route.length - 1].lat) * scale).toFixed(1);
 
   return (
-    <div style={{ width: '100%', height: 140, overflow: 'hidden' }}>
-      <MapContainer
-        key={positions.length ? positions[0].join() + positions[positions.length - 1].join() : 'empty'}
-        center={positions[0]}
-        zoom={15}
-        style={{ width: '100%', height: '100%' }}
-        zoomControl={false}
-        attributionControl={false}
-        scrollWheelZoom={false}
-        dragging={false}
-        touchZoom={false}
-        doubleClickZoom={false}
-      >
-        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <Polyline positions={positions} pathOptions={{ color: color, weight: 4, opacity: 0.95 }} />
-        <FitMapBounds />
-      </MapContainer>
+    <div className="route-thumb" style={{ width: size, height: size, color: color }}>
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
+        <polyline
+          points={points} fill="none"
+          stroke="currentColor" strokeWidth="2.4"
+          strokeLinecap="round" strokeLinejoin="round" opacity="0.95"
+        />
+        <circle cx={fx} cy={fy} r="2.5" fill="currentColor" opacity="0.55" />
+        <circle cx={lx} cy={ly} r="4"   fill="currentColor" />
+      </svg>
     </div>
   );
 }
