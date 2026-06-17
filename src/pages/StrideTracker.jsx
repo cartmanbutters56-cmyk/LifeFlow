@@ -656,8 +656,8 @@ function RouteThumbnail({ route, color, size = 72 }) {
   );
 }
 
-// ─── Route SVG for detail hero (fills container) ──────────────────────────────
-function DetailRouteSVG({ route, color }) {
+// ─── Detail hero map ──────────────────────────────────────────────────────────
+function DetailMap({ route, color }) {
   if (!route || route.length < 2) {
     return (
       <div className="detail-map-svg-wrap">
@@ -669,52 +669,34 @@ function DetailRouteSVG({ route, color }) {
     );
   }
 
-  var W = 380; var H = 320;
-  var lats   = route.map(p => p.lat);
-  var lngs   = route.map(p => p.lng);
-  var minLat = Math.min(...lats);
-  var maxLat = Math.max(...lats);
-  var minLng = Math.min(...lngs);
-  var maxLng = Math.max(...lngs);
+  var positions = route.map(function (p) { return [p.lat, p.lng]; });
 
-  var pad    = 40;
-  var w      = W - pad * 2;
-  var h      = H - pad * 2;
-  var spanLat = maxLat - minLat || 0.0001;
-  var spanLng = maxLng - minLng || 0.0001;
-  var scale  = Math.min(w / spanLng, h / spanLat);
-  var offX   = pad + (w - spanLng * scale) / 2;
-  var offY   = pad + (h - spanLat * scale) / 2;
-
-  var points = route.map(p => {
-    var x = offX + (p.lng - minLng) * scale;
-    var y = offY + (maxLat - p.lat) * scale;
-    return x.toFixed(1) + ',' + y.toFixed(1);
-  }).join(' ');
-
-  var fx = (offX + (route[0].lng - minLng) * scale).toFixed(1);
-  var fy = (offY + (maxLat - route[0].lat) * scale).toFixed(1);
-  var lx = (offX + (route[route.length - 1].lng - minLng) * scale).toFixed(1);
-  var ly = (offY + (maxLat - route[route.length - 1].lat) * scale).toFixed(1);
+  function FitRoute() {
+    var map = useMap();
+    useEffect(function () {
+      var bounds = L.latLngBounds(positions);
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 17 });
+    }, [map]);
+    return null;
+  }
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
-      <polyline
-        points={points} fill="none"
-        stroke={color} strokeWidth="4.5"
-        strokeLinecap="round" strokeLinejoin="round" opacity="0.95"
-      />
-      {/* Glowing duplicate for depth */}
-      <polyline
-        points={points} fill="none"
-        stroke={color} strokeWidth="10"
-        strokeLinecap="round" strokeLinejoin="round" opacity="0.12"
-      />
-      <circle cx={fx} cy={fy} r="5" fill={color} opacity="0.5" />
-      <circle cx={fx} cy={fy} r="3" fill={color} />
-      <circle cx={lx} cy={ly} r="8" fill={color} opacity="0.2" />
-      <circle cx={lx} cy={ly} r="5" fill={color} />
-    </svg>
+    <MapContainer
+      key={route.length}
+      center={positions[0]}
+      zoom={14}
+      style={{ width: '100%', height: '100%' }}
+      zoomControl={false}
+      attributionControl={false}
+      scrollWheelZoom={false}
+      dragging={false}
+      touchZoom={false}
+      doubleClickZoom={false}
+    >
+      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      <Polyline positions={positions} pathOptions={{ color: color, weight: 5, opacity: 0.95 }} />
+      <FitRoute />
+    </MapContainer>
   );
 }
 
@@ -806,7 +788,7 @@ function SessionDetail({ session, onClose }) {
     <div className={'detail-panel open'}>
       {/* Map hero */}
       <div className="detail-map-hero">
-        <DetailRouteSVG route={session.route || []} color={accentRaw} />
+        <DetailMap route={session.route || []} color={accentRaw} />
         <div className="detail-map-overlay" />
 
         {/* Back button */}
