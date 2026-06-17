@@ -947,8 +947,8 @@ function HistoryPanel({ sessions, weight, isOpen, onClose }) {
                 className="sesh-card"
                 onClick={function () { setActiveSession(s); }}
               >
-                {/* Route thumbnail — use CSS currentColor trick */}
-                <RouteThumbnailThemed route={s.route || []} isJog={isJog} size={72} />
+                {/* Mini map with route line */}
+                <MiniMap route={s.route || []} color={isJog ? '#FF5C3D' : '#8FD60A'} />
 
                 <div className="sesh-info">
                   <div className="sesh-top">
@@ -989,68 +989,64 @@ function HistoryPanel({ sessions, weight, isOpen, onClose }) {
   );
 }
 
-// ─── Theme-aware route thumbnail ──────────────────────────────────────────────
-// Uses a data-theme-aware approach: renders the SVG with CSS custom property
-// colors by drawing on a canvas trick — simplest is just two SVGs toggled by CSS.
-// But since SVG stroke can't use CSS vars directly in polyline, we use currentColor
-// on a wrapper span whose color is set via inline style referencing a CSS var.
-function RouteThumbnailThemed({ route, isJog, size }) {
-  // We use a wrapper div with a CSS variable color, then pass it down via fill/stroke="currentColor"
-  return (
-    <div style={{ color: isJog ? 'var(--ember)' : 'var(--volt)', flexShrink: 0 }}>
-      <RouteThumbnailCC route={route} size={size} />
-    </div>
-  );
-}
+// ─── Mini map for history cards ──────────────────────────────────────────────
+function MiniMap({ route, color }) {
+  var mapRef = useRef(null);
+  var rendered = useRef(false);
 
-function RouteThumbnailCC({ route, size = 72 }) {
+  useEffect(function () {
+    if (!route || route.length < 2 || rendered.current) return;
+    rendered.current = true;
+    var map = mapRef.current;
+    if (!map) return;
+    setTimeout(function () { map.invalidateSize(); }, 100);
+  }, [route]);
+
   if (!route || route.length < 2) {
     return (
-      <div className="route-thumb" style={{ width: size, height: size }}>
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.3">
+      <div className="route-thumb" style={{ width: 72, height: 72 }}>
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--text-3)" strokeWidth="1.5" opacity="0.4">
           <path d="M3 17l4-8 5 5 3-4 5 6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </div>
     );
   }
 
-  var lats    = route.map(p => p.lat);
-  var lngs    = route.map(p => p.lng);
-  var minLat  = Math.min(...lats);
-  var maxLat  = Math.max(...lats);
-  var minLng  = Math.min(...lngs);
-  var maxLng  = Math.max(...lngs);
-  var pad     = 9;
-  var w       = size - pad * 2;
-  var h       = size - pad * 2;
-  var spanLat = maxLat - minLat || 0.0001;
-  var spanLng = maxLng - minLng || 0.0001;
-  var scale   = Math.min(w / spanLng, h / spanLat);
-  var offX    = pad + (w - spanLng * scale) / 2;
-  var offY    = pad + (h - spanLat * scale) / 2;
+  var positions = route.map(function (p) { return [p.lat, p.lng]; });
+  var lats = route.map(function (p) { return p.lat; });
+  var lngs = route.map(function (p) { return p.lng; });
+  var center = [(Math.min(...lats) + Math.max(...lats)) / 2, (Math.min(...lngs) + Math.max(...lngs)) / 2];
 
-  var points = route.map(p => {
-    var x = offX + (p.lng - minLng) * scale;
-    var y = offY + (maxLat - p.lat) * scale;
-    return x.toFixed(1) + ',' + y.toFixed(1);
-  }).join(' ');
-
-  var fx = (offX + (route[0].lng - minLng) * scale).toFixed(1);
-  var fy = (offY + (maxLat - route[0].lat) * scale).toFixed(1);
-  var lx = (offX + (route[route.length - 1].lng - minLng) * scale).toFixed(1);
-  var ly = (offY + (maxLat - route[route.length - 1].lat) * scale).toFixed(1);
+  function FitMapBounds() {
+    var map = useMap();
+    var fitted = useRef(false);
+    useEffect(function () {
+      if (fitted.current) return;
+      fitted.current = true;
+      var bounds = L.latLngBounds(positions);
+      map.fitBounds(bounds, { padding: [12, 12], maxZoom: 17 });
+    }, [map]);
+    return null;
+  }
 
   return (
-    <div className="route-thumb" style={{ width: size, height: size }}>
-      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size}>
-        <polyline
-          points={points} fill="none"
-          stroke="currentColor" strokeWidth="2.4"
-          strokeLinecap="round" strokeLinejoin="round" opacity="0.95"
-        />
-        <circle cx={fx} cy={fy} r="2.5" fill="currentColor" opacity="0.55" />
-        <circle cx={lx} cy={ly} r="4"   fill="currentColor" />
-      </svg>
+    <div style={{ width: 72, height: 72, borderRadius: 12, overflow: 'hidden', flexShrink: 0, border: '0.5px solid var(--border)' }}>
+      <MapContainer
+        center={center}
+        zoom={15}
+        style={{ width: '100%', height: '100%' }}
+        zoomControl={false}
+        attributionControl={false}
+        scrollWheelZoom={false}
+        dragging={false}
+        touchZoom={false}
+        doubleClickZoom={false}
+        ref={mapRef}
+      >
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        <Polyline positions={positions} pathOptions={{ color: color, weight: 3, opacity: 0.9 }} />
+        <FitMapBounds />
+      </MapContainer>
     </div>
   );
 }
